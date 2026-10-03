@@ -29,7 +29,6 @@ test('public GUI solves the retained unsmoothed automatic-transition foil and di
   await page.locator('#grid-elliptic').uncheck();
   await page.locator('#quad-transition').selectOption('automatic');
   for (const id of ['quad-trip-upper', 'quad-trip-lower']) await expect(page.locator('#' + id)).toHaveValue('1');
-  await expect(page.locator('#quad-trip-note')).toContainText('allow natural transition');
   // Mode changes retain each mode's global trip values.
   await page.locator('#quad-transition').selectOption('fixed-trip');
   await expect(page.locator('#quad-trip-upper')).toHaveValue('0.05');

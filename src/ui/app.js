@@ -36,7 +36,7 @@ let gridAudit = null, auditingGrid = false;
 const quadFlowCache = createQuadCoupledFlowCache();
 const workspaceTabs = bindWorkspaceTabs({ shell: document.querySelector('.app-shell'),
   tabs: $('workspace-tabs'), settings: $('settings-pane'), visualization: $('visualization-pane'),
-  actions: $('analysis-actions'), actionSlot: $('analysis-actions-slot') });
+  actions: $('analysis-actions') });
 const geometryCanvas = $('geometry-canvas'); const pressureCanvas = $('pressure-canvas');
 const blCanvas = $('bl-canvas');
 $('flow-speed-bar').style.background = flowSpeedGradient;
@@ -78,12 +78,6 @@ const canRefineCoupled = () => isQuadCoupled() && !solverBusy && !stale && resul
   && result.model === 'research-streamtube-euler-bl' && result.checkpoint?.version === 1
   && result.checkpoint.restart.options.blThermodynamics !== 'historical-common-isentrope'
   && result.sourceCase && JSON.stringify(result.sourceCase) === JSON.stringify(lastCase);
-function syncCoupledRefinement() {
-  $('refine-coupled-button').hidden = $('refine-coupled-help').hidden = !isQuadCoupled();
-  $('refine-coupled-button').disabled = !canRefineCoupled();
-  $('refine-coupled-button').title = result?.checkpoint?.restart?.options?.blThermodynamics === 'historical-common-isentrope'
-    ? 'Refinement of the transonic model is not validated yet.' : '';
-}
 
 function syncResolution(){
   for(const option of $('resolution').options)option.disabled=definitions.reduce((n,d)=>n+panelCount(d,Number(option.value)),0)>700;
@@ -176,10 +170,8 @@ function setBusy(busy, meshOnly = false) {
   $('solve-button').disabled = busy; $('stop-button').hidden = !busy;
   $('solve-button').title = '';
   $('solve-button').firstElementChild.textContent = busy && !meshOnly ? 'Solving…' : 'Run';
-  syncCoupledRefinement();
 }
 function syncModelUI() {
-  syncCoupledRefinement();
   const coupled = isCoupled();
   for (const id of ['grid-le-ratio', 'grid-te-ratio', 'grid-curvature-exponent']) $(id).disabled = $('grid-surface-spacing').value !== 'curvature';
   $('grid-aspect-ratio').disabled = !$('grid-match-aspect').checked;
@@ -190,24 +182,18 @@ function syncModelUI() {
   document.querySelector('.pressure-panel').hidden = isStreamtubeGrid()&&!isQuadCoupled();
   $('show-streamlines').closest('label').hidden = false;
   $('show-streamlines').title = isStreamtubeGrid() ? 'Current Euler streamtube centerlines, colored by speed relative to freestream' : '';
-  $('flow-mesh-note').textContent = isStreamtubeGrid()
-    ? isQuadCoupled() ? `Euler flow, quad nodes, all surface boundary layers and wakes solve together. ${quadAutomatic()?'Automatic-transition':'Fixed-trip'} research model; physical accuracy remains unvalidated.` : 'Euler flow and quad node positions solve together. Select Quad Euler + boundary layers for viscous flow.'
-    : coupled ? 'Surface panels and boundary layers solve together. Incompressible flow; no volume mesh.' : 'Incompressible surface-panel flow; no volume mesh.';
   $('viscous-conditions').hidden = !coupled;
   document.querySelectorAll('.element-trips').forEach(node=>{node.hidden=!coupled;});
   document.querySelectorAll('.quad-element-trips').forEach(node=>{node.hidden=!isQuadCoupled();});
   $('quad-viscous-conditions').hidden=!isQuadCoupled();
   for(const id of ['quad-trip-upper','quad-trip-lower'])$(id).max=quadAutomatic()?'1':'0.999999';
   document.querySelectorAll('.quad-element-trips input').forEach(node=>{node.max=quadAutomatic()?'1':'0.999999';});
-  $('quad-trip-note').textContent='Trips are fractions of each initial surface: 0 at stagnation, 1 at the trailing edge, not chord x/c. Element overrides take precedence. '
-    +(quadAutomatic()?'Use 1 to allow natural transition or a laminar surface to the TE. A smaller value forces transition if reached first.':'Fixed-trip mode prescribes transition at each trip. Select Automatic (eᴺ) to solve for natural transition.');
   $('fixed-mach').hidden=hasVolumeMesh();
-  $('quad-mach-help').hidden=!isQuadCoupled();
   $('euler-startup-field').hidden=isQuadCoupled();
   $('streamtube-grid-conditions').hidden=!isStreamtubeGrid();
+  $('streamtube-mesh-settings').hidden=!isStreamtubeGrid();
   $('solve-button').hidden=false;
   $('grid-audit').hidden = true;
-  $('grid-build-help').textContent = `${quadSolveLabel()} builds the initial grid and updates the grid and speed-colored streamlines as it solves; Stop keeps the latest view.`;
   $('flow-tag').textContent = isStreamtubeGrid()?(isQuadCoupled()?'EULER + BL':'EULER · NO BL'):coupled ? 'VISCOUS' : 'INVISCID';
   $('flow-toggle-label').textContent = isQuadCoupled() ? 'Flow & BL' : coupled ? 'BL & wake' : 'Streamlines';
   const finiteBasePanel = $('flow-model').value === 'inviscid' && definitions.some(d => d.trailingEdge?.kind === 'finite-base');
@@ -339,7 +325,7 @@ function clearResults() {
   $('coefficient-warning').hidden = true;
   $('bl-panel').hidden = true;
   $('bl-panel').classList.remove('provisional');
-  $('export-button').disabled = true; $('refine-coupled-button').disabled = true;
+  $('export-button').disabled = true;
   $('cp-tooltip').hidden = true; $('cp-hover').textContent = 'Hover to inspect'; hover = null;
 }
 function clearLivePressure() {
@@ -517,7 +503,6 @@ function showQuadCoupledResult(next, elapsed) {
     : targetNotReached
     ? `Requested Mach ${continuation.targetMach.toFixed(3)} was not reached: ${next.reason}. Showing the ${quadCoupledDisplayedStateLabel(next)} at Mach ${next.mach.toFixed(3)}; its coefficients do not represent the requested condition.`
     : `Coupled Euler/BL did not converge ${next.refinement ? 'during refinement' : `after ${attempts.length} startup attempt(s)`}: ${next.reason}. Displayed BL and pressure profiles are provisional.`, next);setStatus(next.alphaContinuation?.reachedTarget === false?'Target alpha not reached':grid.differentGrid?'Target grid not reached':ncritNotReached?'Target Ncrit not reached':targetNotReached?'Target Mach not reached':'Euler/BL unconverged','failed'); }
-  syncCoupledRefinement();
   draw();
 }
 function run({ meshOnly = false, refineCoupled = false } = {}) {
@@ -810,7 +795,6 @@ $('grid-surface-spacing').addEventListener('change', markStale);
 $('bl-quantity').addEventListener('change', draw);
 $('reference').addEventListener('input', markStale); $('resolution').addEventListener('change',()=>{syncResolution();markStale();});
 $('solve-button').addEventListener('click', run);
-$('refine-coupled-button').addEventListener('click', () => run({ refineCoupled: true }));
 $('grid-audit-overlay').addEventListener('change', updateGridAuditOverlay);
 $('grid-audit-export').addEventListener('click', () => {
   const mesh = stale ? pendingMesh : result?.mesh; if (!mesh || (!gridAudit && !isExperimentalMesh(mesh))) return;
@@ -871,7 +855,7 @@ $('copy-error-debug').addEventListener('click', async () => {
 $('export-button').addEventListener('click', () => {
   if (!result || $('export-button').disabled) return;
   const { field, ...output } = result;
-  const payload = { schemaVersion: 3, application: 'alula 0.5.0-preview.1', exportedAt: new Date().toISOString(),
+  const payload = { schemaVersion: 3, application: 'alula', exportedAt: new Date().toISOString(),
     input: lastCase, result: output, ...(lastErrorReport ? { failureDiagnostics: lastErrorReport } : {}),
     limitations: result.limitations ?? 'Incompressible inviscid baseline. CD is unavailable. No boundary layers, transition, wakes, separation or shocks.' };
   const url = URL.createObjectURL(new Blob([JSON.stringify(payload,

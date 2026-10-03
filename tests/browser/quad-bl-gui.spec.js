@@ -27,7 +27,6 @@ async function open(page){
  await page.locator('#grid-elliptic').uncheck();
  await expect(page.locator('#solve-button')).toHaveText('Run quad Euler/BL↗');
  await expect(page.locator('#quad-viscous-conditions')).toBeVisible();await expect(page.locator('#viscous-conditions')).toBeHidden();
- await expect(page.locator('#quad-trip-note')).toContainText('not chord x/c');
  await page.evaluate(()=>{window.quadEvents=[];window.quadResult=null;});
 }
 for(const smooth of [false,true])test(`public quad Euler/BL cold solve, profiles and export, SLOR ${smooth?'on':'off'}`,async({page})=>{

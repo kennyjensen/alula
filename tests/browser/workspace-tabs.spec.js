@@ -81,7 +81,7 @@ test('desktop shows both columns and restores mobile selection on resize', async
   await expect(page.locator('#settings-tab')).toHaveAttribute('aria-selected', 'true');
 });
 
-test('phone analysis action stays available in both tabs and returns to Settings on desktop', async ({ page }) => {
+test('analysis action floats in both phone tabs and on desktop', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
     window.analysisRequests = [];
@@ -109,6 +109,14 @@ test('phone analysis action stays available in both tabs and returns to Settings
   await run.click();
   await expect.poll(() => page.evaluate(() => window.analysisRequests.length)).toBe(3);
   await page.setViewportSize({ width: 1440, height: 1100 });
-  await expect(page.locator('#analysis-actions-slot > #analysis-actions')).toHaveCount(1);
-  await expect(run).toHaveCSS('position', 'static');
+  await expect(page.locator('body > #analysis-actions')).toHaveCount(1);
+  await expect(page.locator('#analysis-actions')).toHaveCSS('position', 'fixed');
+  await page.locator('#stop-button').click();
+  const desktopPosition = await run.boundingBox();
+  expect(desktopPosition.x + desktopPosition.width).toBeLessThanOrEqual(1440);
+  expect(desktopPosition.y + desktopPosition.height).toBeLessThanOrEqual(1100);
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  expect(await run.boundingBox()).toEqual(desktopPosition);
+  await run.click();
+  await expect.poll(() => page.evaluate(() => window.analysisRequests.length)).toBe(4);
 });

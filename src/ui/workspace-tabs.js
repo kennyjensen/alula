@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // The same panes form desktop columns and a mobile scroll-snap workspace.
-export function bindWorkspaceTabs({ shell, tabs, settings, visualization, actions, actionSlot }) {
+export function bindWorkspaceTabs({ shell, tabs, settings, visualization, actions }) {
   const panes = [settings, visualization];
   const buttons = [...tabs.querySelectorAll('button')];
   const mobile = matchMedia('(max-width: 700px)');
+  // Keep the floating actions outside the scrolling and inert mobile panes.
+  document.body.append(actions);
   let selected = 1, gesture = null;
   const update = () => {
-    const actionParent = mobile.matches ? document.body : actionSlot;
-    if (actions.parentElement !== actionParent) actionParent.append(actions);
     buttons.forEach((button, i) => {
       button.setAttribute('aria-selected', String(i === selected));
       button.tabIndex = i === selected ? 0 : -1;

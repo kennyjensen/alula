@@ -1,6 +1,5 @@
 {
   "name": "alula",
-  "version": "0.5.0-preview.1",
   "private": true,
   "type": "module",
   "description": "Browser-native multielement airfoil solver research workbench",

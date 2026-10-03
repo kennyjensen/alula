@@ -13,7 +13,6 @@ test('the workbench builds the default main/flap MSES-style quadrilateral grid w
   await page.goto('/');await expect(page.locator('#status')).toContainText('Solved');
   await page.locator('#flow-model').selectOption('streamtube-grid');
   await expect(page.locator('#solve-button')).toBeVisible();await expect(page.locator('#streamtube-grid-conditions')).toBeVisible();
-  await expect(page.locator('#flow-mesh-note')).toContainText('No boundary layers yet');
   await page.locator('#grid-tubes').selectOption('11');
   await page.evaluate(()=>{window.gridEvents=[];});
   await page.locator('#mesh-button').click();await expect(page.locator('#status')).toHaveText('Mesh ready',{timeout:60000});
