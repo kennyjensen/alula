@@ -178,3 +178,32 @@ dialog{background:#141e26;border:1px solid #3f545d;border-radius:12px;color:var(
 .github-star svg { flex: none; }
 .github-star:hover { background: #2a313c; border-color: #8b949e; color: #fff; text-decoration: none; }
 .github-star:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.github-star-desktop { display: flex; align-items: center; }
+.github-star-mobile { display: none; }
+
+.related-apps { display: flex; align-items: center; gap: 6px; }
+.element-link { width: 54px; height: 54px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 1px solid #526e70; border-radius: 3px; background: #142126; color: var(--accent); transition: background .15s, border-color .15s; }
+.element-symbol { font: 600 24px/1 var(--mono); }
+.element-name { font-size: 8px; line-height: 1.2; color: #b9cdd1; }
+.element-link:hover { background: #203438; border-color: var(--accent); text-decoration: none; }
+.element-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 960px) {
+  .brand-subtitle > span { white-space: normal; }
+}
+@media (max-width: 700px) {
+  .tabbed-workspace .topbar { height: 68px; flex: none; gap: 8px; padding: 0 12px; }
+  .brand-lockup { flex: 1; gap: 8px; }
+  .tabbed-workspace .top-right { gap: 0; }
+  .related-apps { gap: 4px; }
+  .element-link { width: 44px; height: 44px; gap: 2px; }
+  .element-symbol { font-size: 20px; }
+  .element-name { font-size: 7px; }
+  .github-star-desktop { display: none; }
+  .github-star-mobile { display: flex; margin: 12px 0 0 13px; }
+}
+@media (max-width: 380px) {
+  .tabbed-workspace .topbar { gap: 6px; padding: 0 8px; }
+  .brand-lockup { gap: 6px; }
+  .brand-lockup .brand { font-size: 24px; }
+  .brand-lockup .brand img { display: none; }
+}
