@@ -1,0 +1,297 @@
+{
+  "passed": true,
+  "sourceHashes": {
+    "third_party/Xfoil/src/xpanel.f": "5a0467110dd07c0bc59e09dc3d878bed03652b5e5e285bd78c017e9c6fd435eb",
+    "third_party/Xfoil/src/XFOIL.INC": "4b12cccb24d07c30b58aed40124404d876750826a7ec4fcb94d82b424edb5107",
+    "third_party/Xfoil/src/PINDEX.INC": "8d9c210e5e2c8899aad099bba4296ad2523b634f01d81d7c071b9bb90fac9714",
+    "src/viscous/xfoil-dead-air-gap.js": "392497c93ea232cc899ca7bf269631d86fc41f4b3dc76408472e34eaf8b3b5e3",
+    "scripts/check-xfoil-dead-air-gap-native.js": "38a6ffc86315e0259bf9bd40440ea0d32a57b53a079f455d809b3fdd3db2f9b0"
+  },
+  "source": {
+    "path": "third_party/Xfoil/src/xpanel.f",
+    "firstLine": 1494,
+    "extractedSHA256": "03c1adab25c71f1d049e1352039bcaa42112dcd0f09c3aa1e278bc0b686b0408",
+    "exactByteExtraction": true
+  },
+  "native": {
+    "compiler": "/tmp/mses-fortran-toolchain/gfortran",
+    "flags": [
+      "-O2",
+      "-std=legacy",
+      "-fdefault-real-8",
+      "-I/home/userland/mses/third_party/Xfoil/src"
+    ],
+    "driver": "      PROGRAM GAPCONTROL\n      INCLUDE 'XFOIL.INC'\n      INTEGER NC, IC, K, M\n      REAL DIST(IWX)\n      READ(*,*) NC\n      DO 100 IC=1,NC\n        READ(*,*) ANTE,XP(1),YP(1),XP(4),YP(4),NW\n        READ(*,*) (DIST(K),K=1,NW)\n        N=4\n        SST=0.3\n        DO 10 K=1,N\n          S(K)=0.2*(K-1)\n   10   CONTINUE\n        SHARP=.FALSE.\n        IBLTE(1)=2\n        IBLTE(2)=2\n        IPAN(2,1)=1\n        IPAN(2,2)=N\n        NBL(1)=2+NW\n        NBL(2)=2+NW\n        DO 20 K=1,NW\n          X(N+K)=DIST(K)\n          Y(N+K)=0.0\n          IPAN(2+K,1)=N+K\n          IPAN(2+K,2)=N+K\n   20   CONTINUE\n        CALL XICALC\n        DO 30 K=1,NW\n          WRITE(*,'(I3,1X,I3,1X,ES26.17,1X,ES26.17)')\n     &      IC,K,XSSI(2+K,2)-XSSI(2,2),WGAP(K)\n   30   CONTINUE\n  100 CONTINUE\n      END\n",
+    "driverSHA256": "26149489b911b6d9bcd25f7a99e64294cba2a23291411638ab82d155b992e8c2",
+    "version": "GNU Fortran (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "executableSHA256": "3f28453b0d4ba0d8cb8c661f03735b5f6c58bdca2e597b74e3c041efd75074aa",
+    "stdout": "  1   1    0.00000000000000000E+00    2.00000000000000004E-03\n  1   2    1.99999999999977973E-04    1.99065600000000167E-03\n  1   3    1.00000000000000089E-03    1.79199999999999954E-03\n  1   4    3.00000000000000266E-03    7.03999999999998464E-04\n  1   5    4.74999999999997646E-03    1.45000000000026835E-05\n  1   6    4.99999999999994893E-03    6.25961128292868650E-31\n  1   7    5.49999999999994937E-03    0.00000000000000000E+00\n  2   1    0.00000000000000000E+00    8.89999999999999949E-04\n  2   2    8.90000000000057412E-05    7.87415039999993520E-04\n  2   3    4.45000000000028706E-04    4.55679999999978073E-04\n  2   4    1.33500000000003061E-03    5.69599999999941353E-05\n  2   5    2.11375000000002533E-03    1.11249999999924197E-07\n  2   6    2.22500000000003251E-03    0.00000000000000000E+00\n  2   7    2.44750000000004686E-03    0.00000000000000000E+00\n  3   1    0.00000000000000000E+00    1.15028191761846490E-03\n  3   2    1.15028191761845644E-04    1.27211977833261163E-03\n  3   3    5.75140958809228220E-04    1.47236085455163500E-03\n  3   4    1.72542287642768466E-03    7.36180427275829967E-04\n  3   5    2.73191955434382017E-03    1.65353025657730783E-05\n  3   6    2.87570479404614110E-03    3.81878851854435930E-31\n  3   7    3.16327527345078297E-03    0.00000000000000000E+00\n",
+    "stdoutSHA256": "e656cb114ecde4a3b8588283175837ac51d1d2a3ec373b581e02c2691af9db8c"
+  },
+  "cases": [
+    {
+      "name": "parallel-endpoint-derivatives",
+      "input": {
+        "normalGap": 0.002,
+        "upperDerivative": {
+          "x": -1,
+          "y": 0
+        },
+        "lowerDerivative": {
+          "x": 1,
+          "y": 0
+        }
+      },
+      "requestedDistances": [
+        0,
+        0.0002,
+        0.001,
+        0.003,
+        0.00475,
+        0.005,
+        0.0055
+      ],
+      "samples": [
+        {
+          "distance": 0,
+          "expectedGap": 0.002,
+          "javascript": {
+            "gap": 0.002,
+            "dDistance": 0
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.00019999999999997797,
+          "expectedGap": 0.0019906560000000017,
+          "javascript": {
+            "gap": 0.0019906560000000017,
+            "dDistance": -0.09215999999999021
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.0010000000000000009,
+          "expectedGap": 0.0017919999999999995,
+          "javascript": {
+            "gap": 0.0017919999999999998,
+            "dDistance": -0.38400000000000034
+          },
+          "error": 2.168404344971009e-19
+        },
+        {
+          "distance": 0.0030000000000000027,
+          "expectedGap": 0.0007039999999999985,
+          "javascript": {
+            "gap": 0.0007039999999999985,
+            "dDistance": -0.5759999999999998
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.0047499999999999765,
+          "expectedGap": 0.000014500000000002683,
+          "javascript": {
+            "gap": 0.000014500000000002682,
+            "dDistance": -0.11400000000001016
+          },
+          "error": 1.6940658945086007e-21
+        },
+        {
+          "distance": 0.004999999999999949,
+          "expectedGap": 6.2596112829286865e-31,
+          "javascript": {
+            "gap": 6.2596112829286865e-31,
+            "dDistance": -2.4513724383723205e-14
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.005499999999999949,
+          "expectedGap": 0,
+          "javascript": {
+            "gap": 0,
+            "dDistance": 0
+          },
+          "error": 0
+        }
+      ]
+    },
+    {
+      "name": "negative-source-slope-clamp",
+      "input": {
+        "normalGap": 0.00089,
+        "upperDerivative": {
+          "x": -1,
+          "y": 0
+        },
+        "lowerDerivative": {
+          "x": 0.4472135954999579,
+          "y": 0.8944271909999159
+        }
+      },
+      "requestedDistances": [
+        0,
+        0.000089,
+        0.000445,
+        0.0013349999999999998,
+        0.0021137499999999997,
+        0.002225,
+        0.0024475
+      ],
+      "samples": [
+        {
+          "distance": 0,
+          "expectedGap": 0.00089,
+          "javascript": {
+            "gap": 0.00089,
+            "dDistance": -1.2
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.00008900000000000574,
+          "expectedGap": 0.0007874150399999935,
+          "javascript": {
+            "gap": 0.0007874150399999936,
+            "dDistance": -1.105919999999994
+          },
+          "error": 1.0842021724855044e-19
+        },
+        {
+          "distance": 0.0004450000000000287,
+          "expectedGap": 0.0004556799999999781,
+          "javascript": {
+            "gap": 0.0004556799999999781,
+            "dDistance": -0.7679999999999753
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.0013350000000000306,
+          "expectedGap": 0.000056959999999994135,
+          "javascript": {
+            "gap": 0.00005695999999999413,
+            "dDistance": -0.19199999999998682
+          },
+          "error": 6.776263578034403e-21
+        },
+        {
+          "distance": 0.0021137500000000253,
+          "expectedGap": 1.112499999999242e-7,
+          "javascript": {
+            "gap": 1.1124999999992396e-7,
+            "dDistance": -0.002999999999998633
+          },
+          "error": 2.3822801641527197e-22
+        },
+        {
+          "distance": 0.0022250000000000325,
+          "expectedGap": 0,
+          "javascript": {
+            "gap": 0,
+            "dDistance": 0
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.002447500000000047,
+          "expectedGap": 0,
+          "javascript": {
+            "gap": 0,
+            "dDistance": 0
+          },
+          "error": 0
+        }
+      ]
+    },
+    {
+      "name": "positive-source-slope-clamp",
+      "input": {
+        "normalGap": 0.001150281917618465,
+        "upperDerivative": {
+          "x": -1,
+          "y": 0
+        },
+        "lowerDerivative": {
+          "x": 0.4472135954999579,
+          "y": -0.8944271909999159
+        }
+      },
+      "requestedDistances": [
+        0,
+        0.0001150281917618465,
+        0.0005751409588092324,
+        0.0017254228764276972,
+        0.002731919554343854,
+        0.0028757047940461623,
+        0.0031632752734507786
+      ],
+      "samples": [
+        {
+          "distance": 0,
+          "expectedGap": 0.001150281917618465,
+          "javascript": {
+            "gap": 0.001150281917618465,
+            "dDistance": 1.2
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.00011502819176184564,
+          "expectedGap": 0.0012721197783326116,
+          "javascript": {
+            "gap": 0.0012721197783326116,
+            "dDistance": 0.9216000000000022
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.0005751409588092282,
+          "expectedGap": 0.001472360854551635,
+          "javascript": {
+            "gap": 0.0014723608545516352,
+            "dDistance": 7.815970093361103e-15
+          },
+          "error": 2.168404344971009e-19
+        },
+        {
+          "distance": 0.0017254228764276847,
+          "expectedGap": 0.00073618042727583,
+          "javascript": {
+            "gap": 0.00073618042727583,
+            "dDistance": -0.9600000000000002
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.00273191955434382,
+          "expectedGap": 0.000016535302565773078,
+          "javascript": {
+            "gap": 0.000016535302565773078,
+            "dDistance": -0.2250000000000496
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.002875704794046141,
+          "expectedGap": 3.8187885185443593e-31,
+          "javascript": {
+            "gap": 3.8187885185443593e-31,
+            "dDistance": -3.57047724719447e-14
+          },
+          "error": 0
+        },
+        {
+          "distance": 0.003163275273450783,
+          "expectedGap": 0,
+          "javascript": {
+            "gap": 0,
+            "dDistance": 0
+          },
+          "error": 0
+        }
+      ]
+    }
+  ]
+}

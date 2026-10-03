@@ -1,0 +1,236 @@
+{
+  "scope": "Manufactured physically admissible ordinary wake interval at the same Mach/Re as the saved RAE case. It is a local branch discriminant, not a captured full RAE state.",
+  "parameters": {
+    "reynolds": 992889.5740457802,
+    "mach": 0.2,
+    "ncrit": 9,
+    "gamma": 1.4,
+    "velocityConvention": "physical",
+    "exactJacobian": true,
+    "transitionTolerance": 1e-12
+  },
+  "minimumHk": 1.00005,
+  "provenance": {
+    "compiler": "GNU Fortran (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "flags": [
+      "-O2",
+      "-std=legacy",
+      "-fdefault-real-8",
+      "-fallow-argument-mismatch",
+      "-ffunction-sections",
+      "-fdata-sections",
+      "-Wl,--gc-sections"
+    ],
+    "sha256": {
+      "third_party/Xfoil/src/xfoil.f": "d607e1a205ed9a9620589aa52d3a46f07fe4f312bb5c657b8b99d8c6216378e9",
+      "third_party/Xfoil/src/xpanel.f": "5a0467110dd07c0bc59e09dc3d878bed03652b5e5e285bd78c017e9c6fd435eb",
+      "third_party/Xfoil/src/xoper.f": "339c6bfc0eb3aa18cd48cae931850125b85d8e960457e83ec957046c164871bb",
+      "third_party/Xfoil/src/xsolve.f": "a86a8e7bbd185ec6607f27fceb823e53c61685998f4bc415d641532b66a50bfb",
+      "third_party/Xfoil/src/xbl.f": "b87f9e4e31b56071a373861863526fb860eb9fc4964b3d953a4ca989cbef1941",
+      "third_party/Xfoil/src/xblsys.f": "04f15d3e0371982293ecf575a02c7939af1f0071ff5fd7731411dd8f48471cb4",
+      "third_party/Xfoil/src/xgeom.f": "d237678cf3b6d2c7386dfd036fa0338a9212a9de1dd6d6ee1efa64d7698ee3c7",
+      "third_party/Xfoil/src/xutils.f": "a73b6e3fe8f986ab2f70486ae544851900d9cf8c14332870f1e9cbbcae4bd3b9",
+      "third_party/Xfoil/src/spline.f": "03bb98d9cfedc530ea878d314669b153d89dff5273a8e2e33b0c38425c2d358e",
+      "third_party/Xfoil/src/xtcam.f": "7bc66b481630d1aaf6f919414aff994e8aca02d5e5479ea88eccc73774e2f90e",
+      "third_party/Xfoil/src/xgdes.f": "0c55705ea4ecad1ec0d3262f8707763e8c9f7645e327669a3a45e7ec62bbe484",
+      "third_party/Xfoil/src/userio.f": "a239ded06483038284f458a39e955126e465918b1ae43800f3d75d1ef99c92ab",
+      "third_party/Xfoil/src/XBL.INC": "de22d7c5d036ba8c02ab935a9af7671b0c790304226b744231c815648e23ceaa",
+      "third_party/Xfoil/src/BLPAR.INC": "4758e32600e364e0c5d0f60c5fc6bcf479ef47d7a63cdf0d52ab8a5c14d5f850",
+      "scripts/reference/integral.f": "c5790ce7bc95b24fe521b918706713f785a710a14df1cfbeed3a8c8bf28db4ab"
+    },
+    "reusedExecutableSha256": "9af2bf5501d572cea7af8a5c3fa65a88e81b56caa7404b586726f54142271e5a",
+    "reuseNote": "Existing original-Fortran integral oracle; source hashes match the previously generated integral fixture.",
+    "originalExecutionInput": {
+      "path": "docs/solver-reliability/rae-default-extension/hk-contact-divergence/report-native-input.txt",
+      "sha256": "75ed97f6a920d0c970233763e17f31a069134a2711e5868ed5cad04f01714d5b"
+    },
+    "originalExecutionOutput": {
+      "path": "docs/solver-reliability/rae-default-extension/hk-contact-divergence/report-native-output.log",
+      "sha256": "efb92e5a4dbc90e3f45af86f58c9c38b7068b0ecac61719e98041dd4f8ead617"
+    },
+    "executable": "/tmp/open-mses-integral-native-BVmUbQ/xfoil-integral",
+    "executableSha256": "9af2bf5501d572cea7af8a5c3fa65a88e81b56caa7404b586726f54142271e5a"
+  },
+  "cases": [
+    {
+      "name": "below",
+      "input": {
+        "upstream": {
+          "s": 2,
+          "theta": 0.0046,
+          "deltaStar": 0.005,
+          "ue": 0.98,
+          "aux": 0.021,
+          "wakeGap": 0
+        },
+        "downstream": {
+          "s": 2.5,
+          "theta": 0.0044,
+          "deltaStar": 0.004469726441985876,
+          "ue": 0.99,
+          "aux": 0.02,
+          "wakeGap": 0
+        },
+        "regime": "wake"
+      },
+      "expected": {
+        "residual": [
+          -0.030376116421300642,
+          -0.013866718922668482,
+          0.027292058278543262
+        ],
+        "upstream": [
+          [
+            5.142856878149132,
+            3.4832542413398184,
+            -2.7791984342308464,
+            0.11063609308626599,
+            0.06909799606697074
+          ],
+          [
+            0,
+            -218.59078112760136,
+            1.1035186373932508,
+            -3.074483477687867,
+            0
+          ],
+          [
+            -1.3753275788703234e-7,
+            -86.0625281843664,
+            79.32529700559125,
+            0.020091234595170423,
+            2.8764054225238313e-9
+          ]
+        ],
+        "downstream": [
+          [
+            -7.12807604099253,
+            -53.75546222038734,
+            53.37330284891355,
+            -0.1166442565236498,
+            -0.06909799606697074
+          ],
+          [
+            0,
+            226.1007664467566,
+            1.1536785754565804,
+            3.042626114673201,
+            0
+          ],
+          [
+            0,
+            94.33697607172881,
+            -92.86547261116782,
+            -0.017672883041626043,
+            -2.944550647828636e-9
+          ]
+        ],
+        "reynoldsDerivative": [
+          -4.1457343911555994e-14,
+          0,
+          7.435771595944516e-10
+        ],
+        "machSquaredDerivative": [
+          -0.08740986131567133,
+          -0.009845667257444339,
+          0.018297498957820166
+        ],
+        "tripDerivative": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "contact",
+      "input": {
+        "upstream": {
+          "s": 2,
+          "theta": 0.0046,
+          "deltaStar": 0.005,
+          "ue": 0.98,
+          "aux": 0.021,
+          "wakeGap": 0
+        },
+        "downstream": {
+          "s": 2.5,
+          "theta": 0.0044,
+          "deltaStar": 0.004469726441985877,
+          "ue": 0.99,
+          "aux": 0.02,
+          "wakeGap": 0
+        },
+        "regime": "wake"
+      },
+      "expected": {
+        "residual": [
+          -0.030376116421300642,
+          -0.013866718922668482,
+          0.027292058278543262
+        ],
+        "upstream": [
+          [
+            5.142856878149132,
+            3.4832542413398184,
+            -2.7791984342308464,
+            0.11063609308626599,
+            0.06909799606697074
+          ],
+          [
+            0,
+            -218.59078112760136,
+            1.1035186373932508,
+            -3.074483477687867,
+            0
+          ],
+          [
+            -1.3753275788703234e-7,
+            -86.0625281843664,
+            79.32529700559125,
+            0.020091234595170423,
+            2.8764054225238313e-9
+          ]
+        ],
+        "downstream": [
+          [
+            -7.12807604099253,
+            -53.75546222038735,
+            53.37330284891355,
+            -0.1166442565236498,
+            -0.06909799606697074
+          ],
+          [
+            0,
+            226.1007664467566,
+            1.1536785754565804,
+            3.042626114673201,
+            0
+          ],
+          [
+            0,
+            94.33697607172883,
+            -92.86547261116782,
+            -0.017672883041626043,
+            -2.944550647828636e-9
+          ]
+        ],
+        "reynoldsDerivative": [
+          -4.1457343911555994e-14,
+          0,
+          7.435771595944516e-10
+        ],
+        "machSquaredDerivative": [
+          -0.08740986131567133,
+          -0.009845667257444339,
+          0.018297498957820166
+        ],
+        "tripDerivative": [
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

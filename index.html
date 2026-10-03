@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c1117">
+  <meta name="description" content="An open-source browser workbench for multielement airfoil solver development.">
+  <title>alula · Airfoil workbench</title>
+  <link rel="icon" href="public/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="src/ui/style.css">
+</head>
+<body class="tabbed-workspace">
+  <header class="topbar">
+    <div class="brand-lockup"><a class="brand" href="./" aria-label="alula home"><img src="public/mark.svg" alt="" width="38" height="38"><span>alula</span></a><span class="brand-subtitle"><span>A multi-element and transonic</span> <span>airfoil solver inspired by <a href="https://web.mit.edu/drela/Public/web/mses/" target="_blank" rel="noopener noreferrer">MSES</a>.</span></span></div>
+    <div class="top-right"><span class="version">v0.5 preview</span></div>
+  </header>
+  <nav class="workspace-tabs" id="workspace-tabs" role="tablist" aria-label="Workspace">
+    <button id="settings-tab" role="tab" aria-controls="settings-pane" aria-selected="false" tabindex="-1">Settings</button>
+    <button id="visualization-tab" role="tab" aria-controls="visualization-pane" aria-selected="true">Airfoil Vis</button>
+  </nav>
+  <div class="app-shell">
+    <aside class="sidebar" id="settings-pane" aria-labelledby="settings-tab">
+      <div class="sidebar-heading"><span class="eyebrow">WORKSPACE</span><span class="small-number">01</span></div>
+      <h1>Airfoil assembly</h1>
+      <label class="field-label" for="preset">Configuration</label>
+      <select id="preset"><option value="single">Single element</option><option value="flap" selected>Main element + flap</option><option value="three">Slat + main + flap</option><option value="rae2822-mses">RAE2822</option><option value="nlr7301">NLR7301 + flap</option><option value="custom" disabled hidden>Custom assembly</option></select>
+      <div class="section-label"><span>ELEMENTS</span><button class="text-button" id="add-element">+ Add</button></div>
+      <div id="element-list"></div>
+      <label class="import-button" for="import-file"><span>↥</span> Import DAT / MSES blade</label><input id="import-file" type="file" accept=".dat,.txt,.blade,blade.*" hidden>
+      <details class="grid-settings" id="coordinate-export"><summary>Export airfoil coordinates</summary><div class="grid-settings-body">
+        <label class="field-label" for="coordinate-format">File format</label><select id="coordinate-format"><option value="json">Geometry JSON · all metadata</option><option value="source">Source coordinate text</option><option value="xfoil-labeled">XFOIL DAT · one element</option><option value="mses">MSES blade</option></select>
+        <label class="field-label" for="coordinate-element">Elements</label><select id="coordinate-element"><option value="all">All elements</option></select>
+        <label class="field-label" for="coordinate-points">Coordinate selection</label><select id="coordinate-points"><option value="source">Original supplied points</option><option value="wetted">Wetted surface · omit finite base</option></select>
+        <div id="coordinate-domain" hidden><p class="subtle trip-note">New MSES files require domain bounds in the same coordinate frame.</p><div class="two-fields"><label>Minimum x<input id="coordinate-x-min" type="number" step="any"></label><label>Maximum x<input id="coordinate-x-max" type="number" step="any"></label></div><div class="two-fields"><label>Minimum y<input id="coordinate-y-min" type="number" step="any"></label><label>Maximum y<input id="coordinate-y-max" type="number" step="any"></label></div></div>
+        <p class="subtle trip-note" id="coordinate-export-note">JSON retains measured base corners and all geometry metadata. Standard text files cannot retain those corner labels.</p>
+        <button class="quiet" id="coordinate-export-button">↓ Export coordinates</button>
+      </div></details>
+      <p class="subtle trip-note" id="coordinate-import-note" hidden></p>
+      <div class="sidebar-divider"></div>
+      <div class="settings-section-heading"><h2 class="settings-heading">Flow conditions</h2><span class="tag" id="flow-tag">INVISCID</span></div>
+      <label class="field-label" for="flow-model">Flow model</label>
+      <select id="flow-model" aria-describedby="flow-mesh-note"><option value="inviscid">Panel flow · inviscid</option><option value="coupled">Panel flow + boundary layers · Mach 0</option><option value="streamtube-grid">Quad Euler · inviscid</option><option value="streamtube-bl" selected>Quad Euler + boundary layers</option></select>
+      <p id="flow-mesh-note" class="subtle trip-note">Surface panels; no volume mesh.</p>
+      <div id="viscous-conditions" hidden>
+        <div class="two-fields"><div><label class="field-label" for="reynolds">Reynolds / c<sub>ref</sub></label><input id="reynolds" type="number" value="1000000" min="50000" max="50000000" step="any"></div><div><label class="field-label" for="ncrit">Ncrit</label><input id="ncrit" type="number" value="9" min="0" max="14" step="any"></div></div>
+        <div class="two-fields"><div><label class="field-label" for="trip-upper">Upper trip x/c</label><input id="trip-upper" type="number" value="1" min="0.001" max="1" step="any"></div><div><label class="field-label" for="trip-lower">Lower trip x/c</label><input id="trip-lower" type="number" value="1" min="0.001" max="1" step="any"></div></div>
+        <p class="subtle trip-note">Trips apply to each element’s own chord. Natural eⁿ transition can occur earlier; use 1 for free transition.</p>
+      </div>
+      <div id="streamtube-grid-conditions" hidden>
+        <label class="field-label" for="quad-mach">Freestream Mach</label><input id="quad-mach" type="number" value="0.2" min="0.01" max="0.9" step="any">
+        <p class="subtle trip-note" id="quad-mach-help">Coupled flow reuses converged solutions when Mach changes. Higher Mach starts automatically from a lower-Mach solution. Transonic results remain unvalidated research estimates.</p>
+        <label class="field-label" for="euler-ismom">Euler formulation (ISMOM)</label>
+        <select id="euler-ismom" aria-describedby="euler-ismom-help"><option value="1">1 · Momentum</option><option value="2">2 · Entropy</option><option value="3">3 · Leading-edge hybrid</option><option value="4" selected>4 · Automatic hybrid (default)</option></select>
+        <p class="subtle trip-note" id="euler-ismom-help">ISMOM 4 is MSES’s recommended general-use formulation: entropy conservation in smooth flow, with momentum conservation at shocks.</p>
+        <div id="euler-startup-field">
+          <label class="field-label" for="euler-startup">Euler startup</label>
+          <select id="euler-startup" aria-describedby="euler-startup-help"><option value="standard">Standard (automatic)</option><option value="harmonic-shock">Harmonic grid + stronger shock smoothing</option></select>
+          <p class="subtle trip-note" id="euler-startup-help">Standard automatically uses harmonic grid and stronger shock smoothing for inviscid ISMOM 4 at Mach ≥ 0.7 with 64 or more surface intervals and smoothing enabled. Mach, angle and resolution stay fixed; the selected Euler equations are restored before convergence. These starts allow up to 80 iterations.</p>
+        </div>
+        <div id="quad-viscous-conditions" hidden>
+          <label class="field-label" for="quad-transition">Transition model</label><select id="quad-transition"><option value="fixed-trip">Fixed material trips</option><option value="automatic" selected>Automatic (eᴺ) · research</option></select>
+          <div class="two-fields"><div><label class="field-label" for="quad-reynolds">Reynolds / c<sub>ref</sub></label><input id="quad-reynolds" type="number" value="1000000" min="50000" max="50000000" step="any"></div><div><label class="field-label" for="quad-ncrit">Ncrit</label><input id="quad-ncrit" type="number" value="9" min="0.1" max="14" step="any"></div></div>
+          <div class="two-fields"><div><label class="field-label" for="quad-trip-upper">Upper trip limit</label><input id="quad-trip-upper" type="number" value="1" min="0.000001" max="1" step="any"></div><div><label class="field-label" for="quad-trip-lower">Lower trip limit</label><input id="quad-trip-lower" type="number" value="1" min="0.000001" max="1" step="any"></div></div>
+          <p class="subtle trip-note" id="quad-trip-note">Trips use each initial surface parameter: 0 at stagnation, 1 at the trailing edge. These are surface fractions, not chord x/c. Use 1 to allow natural transition, or set earlier trip limits. Set overrides in each element.</p>
+        </div>
+        <div class="section-label"><span>MESH SETTINGS</span></div>
+        <div class="two-fields"><div><label class="field-label" for="grid-intervals">Surface intervals / side</label><select id="grid-intervals"><option value="8">8 intervals · 9 points</option><option value="16" selected>16 intervals · 17 points</option><option value="32">32 intervals · 33 points</option><option value="64">64 intervals · 65 points</option><option value="128">128 intervals · 129 points</option></select></div><div><label class="field-label" for="grid-tubes">Base tubes / region</label><select id="grid-tubes"><option value="7">7 tubes · 8 streamlines</option><option value="9">9 tubes · 10 streamlines</option><option value="11">11 tubes · 12 streamlines</option><option value="24">24 tubes · 25 streamlines</option></select></div></div>
+        <p class="subtle trip-note">Counts describe the initial distribution. Extra stations resolve curved surfaces; wall tubes are subdivided for leading-edge resolution. Fine requests with automatic transition and trips at 1 start on a coarse grid and refine the converged flow automatically.</p>
+        <div class="two-fields"><div><label class="field-label" for="grid-inlet">Inlet intervals</label><select id="grid-inlet"><option value="auto">Auto · ½ surface</option><option value="16">16</option><option value="32">32</option><option value="64">64</option><option value="128">128</option></select></div><div><label class="field-label" for="grid-outlet">Wake intervals</label><select id="grid-outlet"><option value="auto">Auto · ½ surface</option><option value="16">16</option><option value="32">32</option><option value="64">64</option><option value="128">128</option></select></div></div>
+        <label class="grid-check"><input id="grid-elliptic" type="checkbox" checked> Smooth initial grid (SLOR)</label>
+        <p class="subtle trip-note">Adds elliptic SLOR smoothing before Euler starts. Euler moves and redistributes the grid during the solve with either setting.</p>
+        <!-- Internal mesh defaults; advanced controls are not exposed. -->
+        <div hidden>
+          <input id="grid-upper-streamlines" type="number" placeholder="Auto" min="4" max="32" step="1">
+          <input id="grid-lower-streamlines" type="number" placeholder="Auto" min="4" max="32" step="1">
+          <input id="grid-gap-streamlines" type="number" placeholder="Auto" min="4" max="32" step="1">
+          <input id="grid-chord-exponent" type="number" value="0" min="0" max="1" step="0.1">
+          <select id="grid-surface-spacing"><option value="automatic">Automatic</option><option value="supplied">Cosine spacing</option><option value="curvature">Curvature refinement</option><option value="source">Source point distribution</option></select>
+          <input id="grid-le-ratio" type="number" value="0.2" min="0.01" max="2" step="any" disabled>
+          <input id="grid-te-ratio" type="number" value="0.4" min="0.01" max="2" step="any" disabled>
+          <input id="grid-curvature-exponent" type="number" value="0.5" min="0.05" max="4" step="0.05" disabled>
+          <input id="grid-match-aspect" type="checkbox">
+          <input id="grid-aspect-ratio" type="number" value="2.5" min="0.1" max="20" step="any" disabled>
+        </div>
+        <p class="subtle trip-note" id="grid-build-help">Run quad Euler builds the initial grid and updates the grid and speed-colored streamlines as it solves; Stop keeps the latest view. Boundary layers and validated forces are still in development.</p>
+      </div>
+      <div class="alpha-label"><label for="alpha">Angle of attack <span>α</span></label><div><input id="alpha-number" type="number" min="-15" max="20" step="any" value="4" aria-label="Angle of attack in degrees"><span>°</span></div></div>
+      <input type="range" id="alpha" min="-15" max="20" step="0.01" value="4"><div class="range-labels"><span>−15°</span><span>0°</span><span>20°</span></div>
+      <div class="two-fields"><div><label class="field-label" for="resolution">Default panels / element</label><select id="resolution"><option value="80">80 · coarse</option><option value="160" selected>160 · standard</option><option value="240">240 · fine</option><option value="320">320 · finer</option></select></div><div><label class="field-label" for="reference">Reference chord</label><input type="number" id="reference" value="1" min="0.001" step="any"></div></div>
+      <div class="fixed-conditions"><span id="fixed-mach">Mach number <b>0.00</b></span></div>
+      <div id="analysis-actions-slot"><div class="analysis-actions" id="analysis-actions">
+        <button class="primary" id="solve-button"><span>Run</span><svg class="run-wind-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 7h11a3 3 0 1 0-3-3M2 12h17a3 3 0 1 1-3 3M4 17h5a2.5 2.5 0 1 1-2.5 2.5"/></svg></button>
+        <div class="mesh-actions"><button class="quiet" id="stop-button" hidden>Stop</button></div>
+      </div></div>
+      <button class="text-button refinement" id="refine-coupled-button" hidden disabled>Refine coupled solution <span>↗</span></button>
+      <p class="subtle trip-note" id="refine-coupled-help" hidden>After convergence, build a finer grid from the solved flow and solve again. The grid settings describe the starting mesh.</p>
+      <div class="github-support">
+        <p>Please submit bugs and feature requests <a id="github-issues-link" href="https://github.com/kennyjensen/alula/issues" target="_blank" rel="noopener noreferrer">here</a>.</p>
+        <a class="github-star" id="github-star-link" href="https://github.com/kennyjensen/alula" target="_blank" rel="noopener noreferrer" aria-label="Star Alula on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l2.065 4.186 4.62.672a.75.75 0 0 1 .416 1.28l-3.342 3.257.789 4.601a.75.75 0 0 1-1.088.79L8 13.283l-4.133 2.172a.75.75 0 0 1-1.088-.79l.79-4.602L.226 6.806a.75.75 0 0 1 .416-1.28l4.62-.672L7.327.668A.75.75 0 0 1 8 .25Z"/></svg><span>Star on GitHub</span></a>
+      </div>
+      <div class="sidebar-footer"><span class="dot"></span> Open source · <a href="LICENSE" target="_blank">GPL v2+</a><small>No warranty · <a href="NOTICE.md" target="_blank">Attributions</a></small></div>
+    </aside>
+    <main id="visualization-pane" aria-labelledby="visualization-tab">
+      <div class="plot-screen">
+      <section class="plot-panel geometry-panel">
+        <div class="panel-heading"><div><span class="panel-index">01</span><h3>Geometry & flow</h3><span class="tag" id="element-count">2 ELEMENTS</span></div><div class="plot-toggles"><label><input type="checkbox" id="show-streamlines" checked> <span id="flow-toggle-label">Streamlines</span></label><label><input type="checkbox" id="show-mach-contours"> Mach contours</label><label><input type="checkbox" id="show-mesh" aria-describedby="mesh-status"> Mesh</label><label><input type="checkbox" id="show-panels"> Panels</label><button class="icon-button" id="reset-view" aria-label="Reset geometry view" title="Reset view"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg></button></div></div>
+        <div class="canvas-wrap"><canvas id="geometry-canvas" aria-label="Airfoil geometry, computed mesh and flow"></canvas><div class="airfoil-overlay" id="airfoil-overlay" aria-label="Airfoil conditions and coefficients">
+          <strong id="overlay-name"></strong>
+          <dl><div><dt>Mach</dt><dd id="overlay-mach">—</dd></div><div><dt>Re</dt><dd id="overlay-re">—</dd></div><div><dt>α</dt><dd id="overlay-alpha">—</dd></div><div><dt>CL</dt><dd id="overlay-cl">—</dd></div><div><dt>Cm</dt><dd id="overlay-cm">—</dd></div><div><dt>CD</dt><dd id="overlay-cd">—</dd></div><div><dt>L/D</dt><dd id="overlay-ld">—</dd></div><div><dt>Ncr</dt><dd id="overlay-ncr">—</dd></div></dl>
+        </div><div id="flow-legend" class="flow-legend" hidden aria-label="Speed legend"><span>Speed / U∞</span><div class="flow-speed-key"><div id="flow-speed-bar" aria-hidden="true"></div><div id="flow-speed-ticks" class="flow-speed-ticks"><span>0</span><span>1</span><span>2</span><span>≥3</span></div></div></div><div class="canvas-corner"><span class="flow-arrow">⟶</span> U∞ <span id="flow-angle">4.00°</span></div></div>
+        <div class="plot-footer"><div id="geometry-legend" class="legend"></div><span>Coordinates / c<sub>ref</sub> · equal axis scale</span></div>
+      </section>
+        <section class="plot-panel pressure-panel"><div class="panel-heading"><div><span class="panel-index">02</span><h3>Pressure distribution</h3></div><span class="subtle">C<sub>p</sub> vs x/c<sub>ref</sub></span></div><div class="pressure-wrap"><canvas id="pressure-canvas" aria-label="Computed pressure coefficient, negative Cp upwards"></canvas><div id="cp-tooltip" hidden></div></div><div class="plot-footer"><span id="cp-description">Negative C<sub>p</sub> upwards</span><span id="cp-hover">Hover to inspect</span></div></section>
+      </div>
+      <section class="plot-panel" id="bl-panel" hidden>
+        <div class="panel-heading"><div><span class="panel-index">03</span><h3>Boundary-layer development</h3></div><select id="bl-quantity" aria-label="Boundary-layer plot quantity"><option value="cf">Skin friction Cf</option><option value="deltaStar">Displacement δ* / c_ref</option><option value="theta">Momentum θ / c_ref</option><option value="h">Shape factor H</option></select></div>
+        <canvas id="bl-canvas" aria-label="Upper and lower boundary-layer development"></canvas>
+        <div class="plot-footer"><div class="legend" id="bl-legend"></div><span>Solid: upper · dashed: lower · vertical: transition</span></div>
+      </section>
+        <section class="plot-panel solution-status-panel" id="solution-status" aria-labelledby="solution-status-title">
+          <div class="panel-heading"><div><span class="panel-index">04</span><h3 id="solution-status-title">Solution Status</h3></div><button class="quiet export" id="export-button" disabled>↓ Export results</button></div>
+          <div class="solution-status-content">
+            <p class="solution-residual"><span id="residual-label">Boundary residual ‖Vn‖∞</span>: <span id="residual">—</span><small id="residual-description">No-penetration equation error</small></p>
+            <div class="status-line"><span class="status-pill" id="status">Ready</span><span id="run-meta">Linear vortex panel baseline</span></div>
+            <div id="solve-methods" class="solve-methods" hidden>
+              <p id="solve-method-current" role="status"></p>
+              <details><summary id="solve-method-summary">Methods attempted</summary><ol id="solve-method-history"></ol></details>
+            </div>
+            <div id="error-message" class="error" role="alert" hidden>
+              <p id="error-description"></p>
+              <pre id="error-context" class="error-context"></pre>
+              <div class="error-actions"><button id="copy-error-debug" class="quiet" type="button">Copy diagnostics</button><span id="error-copy-status" role="status"></span></div>
+              <textarea id="error-debug-text" aria-label="Diagnostic record to copy" rows="8" readonly hidden></textarea>
+            </div>
+            <p id="coefficient-warning" class="coefficient-warning" role="status" hidden></p>
+            <p id="mach-contour-status" class="subtle" hidden></p>
+            <span id="mesh-status" class="mesh-status" aria-live="polite" hidden></span>
+            <div id="streamline-status">Computing flow field…</div>
+            <p id="flow-iteration" role="status"></p>
+            <p id="flow-change-readout"></p>
+            <p id="mesh-update" class="mesh-update" role="status" hidden></p>
+            <p id="cp-status" role="status" hidden></p>
+        <div class="grid-audit" id="grid-audit" hidden>
+          <div class="grid-audit-controls"><label>Grid check overlay <select id="grid-audit-overlay" disabled><option value="none">Off</option><option value="spacing">Spacing & shear</option><option value="eta">Streamline mismatch</option><option value="xi">Cross-line mismatch</option></select></label><button class="quiet" id="grid-audit-export" disabled>↓ Grid report</button></div>
+          <p id="grid-audit-summary" role="status">Build mesh, then Check grid. The harmonic comparison tests the SLOR target, including on an unsmoothed mesh.</p>
+          <p id="grid-audit-legend" hidden></p>
+          <details id="grid-audit-details" hidden><summary>Independent check details</summary><div id="grid-audit-table"></div><p>The reference solves harmonic coordinates on the same fixed polygonal boundaries using a separate quadrilateral discretization, refined 1×, 2× and 4×. Limits: 0.05 local intervals for coordinate mismatch; 0.01 for the last reference change. These checks do not validate boundary placement, velocity continuity across dividing cuts or Euler/BL accuracy.</p></details>
+        </div>
+          </div>
+        </section>
+    </main>
+  </div>
+  <script type="module" src="src/ui/app.js"></script>
+</body>
+</html>

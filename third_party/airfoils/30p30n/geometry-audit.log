@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "sourceSha256": "1b973fea5899d4558cad9643c823795049ad98450a1c472599a9f01cf11f00ad",
+  "flowEvaluations": 0,
+  "elements": [
+    {
+      "name": "Slat",
+      "pointCount": 201,
+      "endpointGap": 0,
+      "solverAccepted": true
+    },
+    {
+      "name": "Main Element",
+      "pointCount": 221,
+      "endpointGap": 0,
+      "solverAccepted": true
+    },
+    {
+      "name": "Flap",
+      "pointCount": 242,
+      "endpointGap": 0.005884208357969709,
+      "solverAccepted": false
+    }
+  ]
+}

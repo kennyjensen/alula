@@ -1,0 +1,430 @@
+{
+  "source": "docs/solver-reliability/nlr-user-mach0185-automatic-slor/xfoil-update-first-state.json",
+  "sourceSha256": "65177790f6eaf397ec0bfd1d6d0dd850164a159d8d76975325453aee70beb92f",
+  "scope": "Accepted history and topology scalar projection only; this is not a numerical restart fixture.",
+  "nx": 130,
+  "tubeCounts": [
+    10,
+    13,
+    10
+  ],
+  "conditions": {
+    "reynolds": 2276900.388855015,
+    "ncrit": 9,
+    "mach": 0.185,
+    "trips": [
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "referenceChord": 0.9071316290259023,
+    "edgeMatching": "section-velocity",
+    "wakeOutlet": "banks",
+    "transitionMode": "automatic"
+  },
+  "physicalInput": {
+    "mach": 0.185,
+    "alpha": 6
+  },
+  "bodies": [
+    {
+      "leadingIndex": 65,
+      "trailingIndex": 98,
+      "element": 1
+    },
+    {
+      "leadingIndex": 32,
+      "trailingIndex": 80,
+      "element": 0
+    }
+  ],
+  "surfaces": [
+    {
+      "body": 0,
+      "side": "upper",
+      "ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32
+      ],
+      "transition": 22
+    },
+    {
+      "body": 0,
+      "side": "lower",
+      "ids": [
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65
+      ],
+      "transition": 32
+    },
+    {
+      "body": 1,
+      "side": "upper",
+      "ids": [
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146
+      ],
+      "transition": 24
+    },
+    {
+      "body": 1,
+      "side": "lower",
+      "ids": [
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193,
+        194
+      ],
+      "transition": 20
+    }
+  ],
+  "currentStations": [
+    {
+      "id": 22,
+      "i": 88
+    },
+    {
+      "id": 65,
+      "i": 98
+    },
+    {
+      "id": 123,
+      "i": 57
+    },
+    {
+      "id": 167,
+      "i": 53
+    }
+  ],
+  "history": [
+    {
+      "iteration": 0,
+      "changes": []
+    },
+    {
+      "iteration": 1,
+      "changes": []
+    },
+    {
+      "iteration": 2,
+      "changes": [
+        {
+          "body": 1,
+          "side": "upper",
+          "from": 24,
+          "to": 25,
+          "kind": "natural"
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "changes": [
+        {
+          "body": 1,
+          "side": "upper",
+          "from": 25,
+          "to": 24,
+          "kind": "natural"
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "changes": []
+    },
+    {
+      "iteration": 5,
+      "changes": [
+        {
+          "body": 0,
+          "side": "upper",
+          "from": 23,
+          "to": 22,
+          "kind": "natural"
+        }
+      ]
+    },
+    {
+      "iteration": 6,
+      "changes": [
+        {
+          "body": 1,
+          "side": "lower",
+          "from": 20,
+          "to": 19,
+          "kind": "natural"
+        }
+      ]
+    },
+    {
+      "iteration": 7,
+      "changes": []
+    },
+    {
+      "iteration": 8,
+      "changes": [
+        {
+          "body": 1,
+          "side": "lower",
+          "from": 19,
+          "to": 20,
+          "kind": "natural"
+        }
+      ]
+    },
+    {
+      "iteration": 9,
+      "changes": []
+    },
+    {
+      "iteration": 10,
+      "changes": [
+        {
+          "body": 1,
+          "side": "lower",
+          "from": 20,
+          "to": 19,
+          "kind": "natural"
+        }
+      ]
+    },
+    {
+      "iteration": 11,
+      "changes": []
+    },
+    {
+      "iteration": 12,
+      "changes": [
+        {
+          "body": 1,
+          "side": "lower",
+          "from": 19,
+          "to": 20,
+          "kind": "natural"
+        }
+      ]
+    },
+    {
+      "iteration": 13,
+      "changes": []
+    },
+    {
+      "iteration": 14,
+      "changes": [
+        {
+          "body": 1,
+          "side": "lower",
+          "from": 20,
+          "to": 19,
+          "kind": "natural"
+        }
+      ]
+    },
+    {
+      "iteration": 15,
+      "changes": []
+    },
+    {
+      "iteration": 16,
+      "changes": [
+        {
+          "body": 1,
+          "side": "lower",
+          "from": 19,
+          "to": 20,
+          "kind": "natural"
+        }
+      ]
+    },
+    {
+      "iteration": 17,
+      "changes": []
+    },
+    {
+      "iteration": 18,
+      "changes": [
+        {
+          "body": 1,
+          "side": "lower",
+          "from": 20,
+          "to": 19,
+          "kind": "natural"
+        }
+      ]
+    },
+    {
+      "iteration": 19,
+      "changes": []
+    },
+    {
+      "iteration": 20,
+      "changes": [
+        {
+          "body": 1,
+          "side": "lower",
+          "from": 19,
+          "to": 20,
+          "kind": "natural"
+        }
+      ]
+    }
+  ]
+}

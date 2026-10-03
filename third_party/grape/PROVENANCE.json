@@ -1,0 +1,18 @@
+{
+  "retrieved": "2026-09-08T03:20:58.117Z",
+  "archive": "https://www.pdas.com/packages/grape.zip",
+  "archiveSha256": "b267723efae9bf4efe7ebd9c527ad1a70bf1431cc6ce45141758d68677a65854",
+  "description": "NASA Ames GRAPE (COSMIC ARC-11379), original and modernized source distributed by Public Domain Aeronautical Software. Selected files retained without modification.",
+  "files": {
+    "original.src": "4dfe7b4aeade8b8083881ab3ec8a41a562be7640a6d2576f0c23487627f56d48",
+    "grape.f90": "97c9751a6b35da856f30d0a4490b587ef76df18a75783d84f0eb45c638cc5d27",
+    "readme.txt": "a071f75dbab7e14fa2490442851c04ff0de8a410e70bf6ad67f40afae8c37202",
+    "arc11379.txt": "7464d2f18294a25ba9158d5c60543520a80e4b94620d29a7675b020f0cb27d1c"
+  },
+  "stencil": {
+    "file": "original.src",
+    "firstLine": 3123,
+    "lastLine": 3131
+  },
+  "scope": "Reference source for Poisson drift differencing. No full GRAPE, ISET or MSET equivalence claim."
+}

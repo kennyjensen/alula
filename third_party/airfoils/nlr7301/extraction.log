@@ -1,0 +1,60 @@
+{
+  "sourceArchive": "UFR3-01_nlr7301grid.zip",
+  "sourceArchiveHash": "28aa28b47d981681df3b6300a41a6a9e1c029514ca28cb91bda699b32b7bfc62",
+  "sourceMember": "t/nlrgap26.dat",
+  "sourceMemberHash": "dd930f6761a24a00d9a97925cc7967045572f43d0162381099ff030795d442f5",
+  "blockDimensions": [
+    [
+      49,
+      153
+    ],
+    [
+      89,
+      369
+    ],
+    [
+      89,
+      65
+    ],
+    [
+      89,
+      65
+    ],
+    [
+      161,
+      145
+    ],
+    [
+      65,
+      145
+    ],
+    [
+      153,
+      145
+    ],
+    [
+      81,
+      137
+    ],
+    [
+      89,
+      329
+    ]
+  ],
+  "method": "Exact cancellation of duplicate block-boundary segments; the two bounded wall loops are oriented CCW and cyclically start at their supplied upper TE corners. Repeated closure endpoints are appended; no existing point moves or is removed.",
+  "edgeMultiplicity": {
+    "2": 1440,
+    "1": 1920
+  },
+  "unpairedVertexDegrees": {
+    "2": 1920
+  },
+  "loopPointCounts": {
+    "main": 456,
+    "flap": 248,
+    "farfield": 1216
+  },
+  "referenceChord": 1
+}
+{"name": "Main element", "area": 0.10833705583920225, "upperTrailingEdge": [0.9436, 0.01499], "lowerTrailingEdge": [0.9436, 0.0141], "trailingEdgeBaseLength": 0.0008900000000000002, "sourceEdges": [{"block": 1, "side": "jmin", "firstSegment": 1, "lastSegment": 48, "count": 48}, {"block": 5, "side": "jmin", "firstSegment": 1, "lastSegment": 160, "count": 160}, {"block": 6, "side": "jmin", "firstSegment": 1, "lastSegment": 64, "count": 64}, {"block": 7, "side": "jmin", "firstSegment": 1, "lastSegment": 152, "count": 152}, {"block": 9, "side": "imin", "firstSegment": 153, "lastSegment": 184, "count": 32}]}
+{"name": "Flap", "area": 0.006130782884424365, "upperTrailingEdge": [1.201771, -0.1037033], "lowerTrailingEdge": [1.201377, -0.104784], "trailingEdgeBaseLength": 0.001150281917618465, "sourceEdges": [{"block": 1, "side": "jmax", "firstSegment": 1, "lastSegment": 48, "count": 48}, {"block": 2, "side": "imin", "firstSegment": 73, "lastSegment": 104, "count": 32}, {"block": 8, "side": "jmin", "firstSegment": 1, "lastSegment": 80, "count": 80}, {"block": 9, "side": "jmin", "firstSegment": 1, "lastSegment": 88, "count": 88}]}

@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "case": "RAE64x11",
+    "checkpoint": "docs/solver-reliability/rae-inviscid-audit/fixtures/rae64x11-before-amplification-stall.json",
+    "sha256": "871e68c7a53e1c35d06ef78713e285a8a9b186a84c416403ef5053bc7b8b3f3f",
+    "location": "upper surface interval ending at grid station 206 / BL station 77; late stall after experimental wake-bank repair and 10 ordinary updates"
+  },
+  "parameters": {
+    "reynolds": 2689608.213390552,
+    "mach": 0.74,
+    "gamma": 1.4,
+    "ncrit": 4,
+    "velocityConvention": "physical",
+    "exactJacobian": true,
+    "transitionTolerance": 1e-12,
+    "hkFloorLinearization": "native"
+  },
+  "input": {
+    "regime": "laminar",
+    "upstream": {
+      "s": 0.6680992686999413,
+      "aux": 1.857402220850187,
+      "theta": 0.0002896061513732028,
+      "deltaStar": 0.0009451127444011483,
+      "ue": 1.6917045109815572
+    },
+    "downstream": {
+      "s": 0.6813273264272786,
+      "aux": 1.710689577797227,
+      "theta": 0.00033694307025730494,
+      "deltaStar": 0.001153637391066947,
+      "ue": 1.6076143121703736
+    }
+  },
+  "direction": {
+    "upstream": {
+      "aux": 4.131899467510571,
+      "theta": -0.005536550701253522,
+      "deltaStar": -0.04479553876425926,
+      "ue": 10.796687103078712,
+      "s": 0.00030712987195675534
+    },
+    "downstream": {
+      "aux": -127.38615447832898,
+      "theta": -0.009656936566803723,
+      "deltaStar": -0.12442308990028025,
+      "ue": 11.308047865977452,
+      "s": 0.0003131712727588773
+    }
+  },
+  "expected": {
+    "amplificationResidual": -0.14766509616147272,
+    "directionalDerivative": 0.14766509616147908
+  },
+  "sweep": [
+    {
+      "h": 1e-05,
+      "centralError": 1.8558373788512472,
+      "forwardError": 44.750521621289224
+    },
+    {
+      "h": 1e-06,
+      "centralError": 0.01855696848650848,
+      "forwardError": 4.311972251546884
+    },
+    {
+      "h": 1e-07,
+      "centralError": 0.00018566999015270924,
+      "forwardError": 0.42953114749410337
+    },
+    {
+      "h": 1e-08,
+      "centralError": 1.925581575440427e-06,
+      "forwardError": 0.04293649536989755
+    },
+    {
+      "h": 1e-09,
+      "centralError": 1.7420475409424263e-07,
+      "forwardError": 0.004293781341250386
+    }
+  ]
+}

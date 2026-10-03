@@ -1,0 +1,64 @@
+name: Four-mode solver smoke
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: solver-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  default-solve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      # A failed mode must not prevent the remaining modes from reporting.
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        case:
+          - flap-inviscid
+          - flap-coupled
+          - flap-streamtube-grid
+          - flap-streamtube-bl
+    env:
+      SOLVER_CASE: ${{ matrix.case }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: |
+          mkdir -p ci-artifacts
+          node --version > ci-artifacts/environment.log
+          npm --version >> ci-artifacts/environment.log
+          git rev-parse HEAD >> ci-artifacts/environment.log
+          npm ci 2>&1 | tee ci-artifacts/npm-ci.log
+      - name: One bounded default solve
+        run: |
+          node scripts/validate-solver-reliability.js \
+            --stage=solve --case="$SOLVER_CASE" --seconds=180 \
+            --out=ci-artifacts/solve \
+            2>&1 | tee ci-artifacts/solve.log
+      - name: Retain terminal state and failure receipts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: solver-smoke-${{ matrix.case }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-artifacts/
+          if-no-files-found: warn
+          compression-level: 1
+          retention-days: 30

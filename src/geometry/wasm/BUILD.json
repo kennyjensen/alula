@@ -1,0 +1,12 @@
+{
+  "compiler": "assemblyscript",
+  "version": "0.28.9",
+  "options": [
+    "--optimize",
+    "--runtime",
+    "incremental"
+  ],
+  "sourceSha256": "07aa4dbf5ca0c2c7bdf36fbe368baf8b8907c467d1d42216e4486222f6747543",
+  "wasmSha256": "9619cb47df85766d59b36b62b1b72c9e60c924e586d2f3d103c474cbd3fa6ee2",
+  "floatingPoint": "Float64; no fast-math"
+}

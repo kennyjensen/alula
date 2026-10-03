@@ -1,0 +1,284 @@
+{
+  "provenance": {
+    "compiler": "GNU Fortran (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "flags": [
+      "-O2",
+      "-std=legacy",
+      "-fdefault-real-8",
+      "-fallow-argument-mismatch",
+      "-ffunction-sections",
+      "-fdata-sections",
+      "-Wl,--gc-sections"
+    ],
+    "sha256": {
+      "third_party/Xfoil/src/xfoil.f": "d607e1a205ed9a9620589aa52d3a46f07fe4f312bb5c657b8b99d8c6216378e9",
+      "third_party/Xfoil/src/xpanel.f": "5a0467110dd07c0bc59e09dc3d878bed03652b5e5e285bd78c017e9c6fd435eb",
+      "third_party/Xfoil/src/xoper.f": "339c6bfc0eb3aa18cd48cae931850125b85d8e960457e83ec957046c164871bb",
+      "third_party/Xfoil/src/xsolve.f": "a86a8e7bbd185ec6607f27fceb823e53c61685998f4bc415d641532b66a50bfb",
+      "third_party/Xfoil/src/xbl.f": "b87f9e4e31b56071a373861863526fb860eb9fc4964b3d953a4ca989cbef1941",
+      "third_party/Xfoil/src/xblsys.f": "04f15d3e0371982293ecf575a02c7939af1f0071ff5fd7731411dd8f48471cb4",
+      "third_party/Xfoil/src/xgeom.f": "d237678cf3b6d2c7386dfd036fa0338a9212a9de1dd6d6ee1efa64d7698ee3c7",
+      "third_party/Xfoil/src/xutils.f": "a73b6e3fe8f986ab2f70486ae544851900d9cf8c14332870f1e9cbbcae4bd3b9",
+      "third_party/Xfoil/src/spline.f": "03bb98d9cfedc530ea878d314669b153d89dff5273a8e2e33b0c38425c2d358e",
+      "third_party/Xfoil/src/xtcam.f": "7bc66b481630d1aaf6f919414aff994e8aca02d5e5479ea88eccc73774e2f90e",
+      "third_party/Xfoil/src/xgdes.f": "0c55705ea4ecad1ec0d3262f8707763e8c9f7645e327669a3a45e7ec62bbe484",
+      "third_party/Xfoil/src/userio.f": "a239ded06483038284f458a39e955126e465918b1ae43800f3d75d1ef99c92ab",
+      "third_party/Xfoil/src/XBL.INC": "de22d7c5d036ba8c02ab935a9af7671b0c790304226b744231c815648e23ceaa",
+      "third_party/Xfoil/src/BLPAR.INC": "4758e32600e364e0c5d0f60c5fc6bcf479ef47d7a63cdf0d52ab8a5c14d5f850",
+      "scripts/reference/integral.f": "c5790ce7bc95b24fe521b918706713f785a710a14df1cfbeed3a8c8bf28db4ab"
+    },
+    "reusedExecutableSha256": "9af2bf5501d572cea7af8a5c3fa65a88e81b56caa7404b586726f54142271e5a",
+    "reuseNote": "Existing original-Fortran integral oracle; source hashes match the previously generated integral fixture."
+  },
+  "cases": [
+    {
+      "name": "saved-coarse-transition-floor",
+      "parameters": {
+        "reynolds": 2449255.3983699363,
+        "mach": 0.185,
+        "gamma": 1.4,
+        "ncrit": 9,
+        "velocityConvention": "physical",
+        "exactJacobian": false,
+        "transitionTolerance": 0.00005
+      },
+      "input": {
+        "upstream": {
+          "s": 0.14475242716771086,
+          "aux": 8.70888305267304,
+          "theta": 0.00007042502238957987,
+          "deltaStar": 0.0005782962502181838,
+          "ue": 2.8533946747250516,
+          "wakeGap": 0
+        },
+        "downstream": {
+          "s": 0.15543947126533836,
+          "aux": 0.0589573183447575,
+          "theta": 0.0001443422762550721,
+          "deltaStar": 0.00015886322465313336,
+          "ue": 2.3721503602253056,
+          "wakeGap": 0
+        },
+        "regime": "transition",
+        "tripS": 1.152808783369948
+      },
+      "expected": {
+        "residual": [
+          -0.0002940112179066292,
+          -0.5067490972609742,
+          0.9647600428599716
+        ],
+        "upstream": [
+          [
+            0.00015791781617006614,
+            -22.06317737358701,
+            3.805229441648441,
+            0.0008273345125938183,
+            0.237968748815938
+          ],
+          [
+            -0.10732601794298013,
+            -4329.435845498298,
+            -1248.9109422965953,
+            -2.1665161412293044,
+            9.740931020965188
+          ],
+          [
+            0.1242121545459148,
+            -9224.867921922016,
+            1149.292600135657,
+            1.1789657224829673,
+            -14.410599868889243
+          ]
+        ],
+        "downstream": [
+          [
+            -0.09680559281576562,
+            -19.997453694093778,
+            28.573863982689495,
+            -0.0013220968315204923,
+            -0.237968748815938
+          ],
+          [
+            0,
+            7754.444827898158,
+            178.023317496416,
+            2.645377963765316,
+            -9.723770052013869
+          ],
+          [
+            -0.6320264373054035,
+            6468.673712240761,
+            -7247.046877724396,
+            -1.3726603961335713,
+            14.384406081846837
+          ]
+        ]
+      }
+    },
+    {
+      "name": "saved-fine-turbulent-floor",
+      "parameters": {
+        "reynolds": 2449255.3983699363,
+        "mach": 0.185,
+        "gamma": 1.4,
+        "ncrit": 9,
+        "velocityConvention": "physical",
+        "exactJacobian": false,
+        "transitionTolerance": 0.00005
+      },
+      "input": {
+        "upstream": {
+          "s": 0.1498833289589746,
+          "aux": 0.05874352793593727,
+          "theta": 0.00008396430548450644,
+          "deltaStar": 0.0005942502722239733,
+          "ue": 2.7358239500546158,
+          "wakeGap": 0
+        },
+        "downstream": {
+          "s": 0.1555599191150672,
+          "aux": 0.06943706770111953,
+          "theta": 0.00020603482666450658,
+          "deltaStar": 0.000222377613295249,
+          "ue": 2.0454052233656403,
+          "wakeGap": 0
+        },
+        "regime": "turbulent",
+        "tripS": 1.153702076322411
+      },
+      "expected": {
+        "residual": [
+          -0.0012955309626361392,
+          -0.8354066149167361,
+          1.1407321313944694
+        ],
+        "upstream": [
+          [
+            0.057131090427168976,
+            2.0522460743464292,
+            -0.29117455358309285,
+            0.0012480987164320873,
+            0.30129569458369754
+          ],
+          [
+            0,
+            261.21897948363403,
+            -1723.3680409881133,
+            -2.1164827926527843,
+            4.586743830451788
+          ],
+          [
+            0,
+            -11636.658234693983,
+            1631.787660525049,
+            1.0851740999952675,
+            -6.892806496332223
+          ]
+        ],
+        "downstream": [
+          [
+            -0.0780679574107571,
+            -8.660468851807982,
+            9.862913124652552,
+            -0.0017691711477393042,
+            -0.30129569458369754
+          ],
+          [
+            0,
+            5548.883920653283,
+            -489.0475151394548,
+            2.8929067050062107,
+            -4.58338532163193
+          ],
+          [
+            -0.29174061304321813,
+            2603.613503614729,
+            -2664.9716027732347,
+            -1.443829385352908,
+            6.888160339140449
+          ]
+        ]
+      }
+    },
+    {
+      "name": "laminar-both-stations-clipped",
+      "parameters": {
+        "reynolds": 1000000,
+        "mach": 0,
+        "ncrit": 9
+      },
+      "input": {
+        "regime": "laminar",
+        "tripS": 10000000000,
+        "upstream": {
+          "s": 0.2,
+          "aux": 1,
+          "theta": 0.0003,
+          "deltaStar": 0.000306,
+          "ue": 1
+        },
+        "downstream": {
+          "s": 0.21,
+          "aux": 1.1,
+          "theta": 0.00031,
+          "deltaStar": 0.0003162,
+          "ue": 1.02
+        }
+      },
+      "expected": {
+        "residual": [
+          0.09999999993242129,
+          -0.07002199691638993,
+          0.05645080391184677
+        ],
+        "upstream": [
+          [
+            -1.000000000675788,
+            1.10784929988635e-7,
+            0,
+            0,
+            6.757880729306747e-9
+          ],
+          [
+            0,
+            -3157.3562291315716,
+            358.0894685059867,
+            -2.9390168808730417,
+            16.259507355527877
+          ],
+          [
+            0,
+            -1323.0629628198758,
+            1107.947958328492,
+            -0.008943406798722044,
+            -5.680930145667474
+          ]
+        ],
+        "downstream": [
+          [
+            0.9999999993242119,
+            1.10784929988635e-7,
+            0,
+            0,
+            -6.757880729306747e-9
+          ],
+          [
+            0,
+            3403.52018053961,
+            340.8341042284878,
+            3.0408163088694957,
+            -16.2596058346639
+          ],
+          [
+            0,
+            1101.0528368135897,
+            -1255.955973214135,
+            -0.04696416633240033,
+            5.681108979006025
+          ]
+        ]
+      }
+    }
+  ]
+}

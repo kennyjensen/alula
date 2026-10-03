@@ -1,0 +1,435 @@
+{
+  "source": "SOURCE.json",
+  "scope": "Visually verified initializer, spline-helper and selected Newton/update/grid-maintenance routines; no copied program text.",
+  "routines": [
+    {
+      "name": "ISET",
+      "printedPages": {
+        "first": 171,
+        "last": 173
+      },
+      "includes": [
+        "STATE.INC",
+        "ISET.INC"
+      ],
+      "calls": [
+        "READIN",
+        "NORMIT",
+        "SPLNIT",
+        "OUTLIN",
+        "NORLIN",
+        "RESPLI",
+        "ELLIP",
+        "QCALC",
+        "BLINIT",
+        "OFFSET",
+        "OUTPUT"
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "READIN",
+      "printedPages": {
+        "first": 173,
+        "last": 175
+      },
+      "includes": [
+        "STATE.INC",
+        "ISET.INC"
+      ],
+      "calls": [],
+      "notes": [
+        "The BLADE.DAT OPEN on unit 3 is commented out on p.173; the SPOS.DAT OPEN on unit 4 is active on p.174."
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "NORMIT",
+      "printedPages": {
+        "first": 175,
+        "last": 176
+      },
+      "includes": [
+        "STATE.INC",
+        "ISET.INC"
+      ],
+      "calls": [],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "SPLNIT",
+      "printedPages": {
+        "first": 176,
+        "last": 176
+      },
+      "includes": [
+        "STATE.INC",
+        "ISES.INC"
+      ],
+      "calls": [
+        "SPLINE",
+        "SEVAL"
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "OUTLIN",
+      "printedPages": {
+        "first": 177,
+        "last": 179
+      },
+      "includes": [
+        "STATE.INC",
+        "ISET.INC"
+      ],
+      "calls": [
+        "SEVAL"
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "RESPLI",
+      "printedPages": {
+        "first": 179,
+        "last": 180
+      },
+      "includes": [
+        "STATE.INC",
+        "ISET.INC"
+      ],
+      "calls": [
+        "SPLINE"
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "NORLIN",
+      "printedPages": {
+        "first": 180,
+        "last": 181
+      },
+      "includes": [
+        "STATE.INC",
+        "ISET.INC"
+      ],
+      "calls": [],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "BLINIT",
+      "printedPages": {
+        "first": 181,
+        "last": 183
+      },
+      "includes": [
+        "STATE.INC",
+        "ISET.INC"
+      ],
+      "calls": [
+        "DEVAL",
+        "TDCALC"
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "TDCALC",
+      "printedPages": {
+        "first": 183,
+        "last": 184
+      },
+      "includes": [
+        "STATE.INC",
+        "ISET.INC"
+      ],
+      "calls": [],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "OFFSET",
+      "printedPages": {
+        "first": 184,
+        "last": 185
+      },
+      "includes": [
+        "STATE.INC",
+        "ISET.INC"
+      ],
+      "calls": [
+        "SEVAL",
+        "DEVAL",
+        "NORLIN"
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "QCALC",
+      "printedPages": {
+        "first": 185,
+        "last": 186
+      },
+      "includes": [
+        "STATE.INC",
+        "ISET.INC"
+      ],
+      "calls": [],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "ELLIP",
+      "printedPages": {
+        "first": 186,
+        "last": 189
+      },
+      "includes": [],
+      "calls": [],
+      "notes": [
+        "Exterior rows retain their indexed y values, which need not be constant, while x is copied from the adjacent interior row. This does not generally preserve an initially sloped exterior curve."
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "SPLINE",
+      "printedPages": {
+        "first": 278,
+        "last": 278
+      },
+      "includes": [],
+      "calls": [
+        "SOLV"
+      ],
+      "notes": [
+        "Natural cubic spline with zero second derivative at each endpoint; XP stores first derivatives with respect to the supplied S parameter."
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "SOLV",
+      "printedPages": {
+        "first": 278,
+        "last": 279
+      },
+      "includes": [],
+      "calls": [],
+      "notes": [
+        "Scalar tridiagonal elimination used by SPLINE; ELLIP implements its own elimination inline."
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "SEVAL",
+      "printedPages": {
+        "first": 279,
+        "last": 279
+      },
+      "includes": [],
+      "calls": [],
+      "notes": [
+        "Evaluates the cubic Hermite interpolant from values X and first derivatives XP at knots S."
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "DEVAL",
+      "printedPages": {
+        "first": 279,
+        "last": 279
+      },
+      "includes": [],
+      "calls": [],
+      "notes": [
+        "Evaluates the analytic first derivative with respect to S of the same cubic interpolant as SEVAL."
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed"
+    },
+    {
+      "name": "ISES",
+      "printedPages": {
+        "first": 190,
+        "last": 191
+      },
+      "includes": [
+        "STATE.INC",
+        "ISES.INC"
+      ],
+      "calls": [
+        "INIT",
+        "SMOVE",
+        "DISSIP",
+        "NCALC",
+        "SETUP",
+        "SETBC",
+        "SOLVE",
+        "UPDATE",
+        "DEKINK",
+        "PICALC",
+        "LCALC",
+        "OUTPUT"
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed",
+      "notes": [
+        "See ../../docs/ISES_NEWTON_COMPARISON.md for verified behavior and comparison limits."
+      ]
+    },
+    {
+      "name": "UPDATE",
+      "printedPages": {
+        "first": 260,
+        "last": 264
+      },
+      "includes": [
+        "STATE.INC",
+        "ISES.INC"
+      ],
+      "calls": [
+        "GLOBIT",
+        "NEWBLD",
+        "NEWDIS"
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed",
+      "notes": [
+        "See ../../docs/ISES_NEWTON_COMPARISON.md for verified behavior and comparison limits."
+      ]
+    },
+    {
+      "name": "SMOVE",
+      "printedPages": {
+        "first": 280,
+        "last": 282
+      },
+      "includes": [
+        "STATE.INC",
+        "ISES.INC"
+      ],
+      "calls": [
+        "STIFF",
+        "DSOLV"
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed",
+      "notes": [
+        "See ../../docs/ISES_NEWTON_COMPARISON.md for verified behavior and comparison limits."
+      ]
+    },
+    {
+      "name": "STIFF",
+      "printedPages": {
+        "first": 283,
+        "last": 285
+      },
+      "includes": [],
+      "calls": [],
+      "transcription": "not present",
+      "originalExecution": "not performed",
+      "notes": [
+        "See ../../docs/ISES_NEWTON_COMPARISON.md for verified behavior and comparison limits."
+      ]
+    },
+    {
+      "name": "DSOLV",
+      "printedPages": {
+        "first": 285,
+        "last": 287
+      },
+      "includes": [
+        "STATE.INC",
+        "ISES.INC"
+      ],
+      "calls": [],
+      "transcription": "not present",
+      "originalExecution": "not performed",
+      "notes": [
+        "See ../../docs/ISES_NEWTON_COMPARISON.md for verified behavior and comparison limits."
+      ]
+    },
+    {
+      "name": "DEKINK",
+      "printedPages": {
+        "first": 287,
+        "last": 287
+      },
+      "includes": [
+        "STATE.INC",
+        "ISES.INC"
+      ],
+      "calls": [],
+      "transcription": "not present",
+      "originalExecution": "not performed",
+      "notes": [
+        "See ../../docs/ISES_NEWTON_COMPARISON.md for verified behavior and comparison limits."
+      ]
+    },
+    {
+      "name": "NCALC",
+      "printedPages": {
+        "first": 196,
+        "last": 197
+      },
+      "includes": [
+        "STATE.INC",
+        "ISES.INC"
+      ],
+      "calls": [
+        "DEVAL"
+      ],
+      "transcription": "not present",
+      "originalExecution": "not performed",
+      "notes": [
+        "Ordinary interior direction is the rotated normalized chord between adjacent streamwise neighbors. At LE/TE, the neighbor indices IM/IP are initialized outside the transverse loop: the first boundary node selects one-sided neighbors and that selection persists across the entire crossline. Analysis-mode boundary LE direction follows the blade tangent; inverse mode rotates directions to preserve axial chord. See ../../docs/ISES_NEWTON_COMPARISON.md."
+      ]
+    }
+  ],
+  "externalDefinitionsNotYetIndexed": [
+    "DISSIP",
+    "GLOBIT",
+    "INIT",
+    "LCALC",
+    "NEWBLD",
+    "NEWDIS",
+    "OUTPUT",
+    "PICALC",
+    "SETBC",
+    "SETUP",
+    "SOLVE"
+  ],
+  "issues": [
+    {
+      "routine": "SPLNIT",
+      "printedPage": 176,
+      "kind": "include-name discrepancy",
+      "observed": "The listing names ISES.INC here while other setup routines name ISET.INC.",
+      "resolution": "unresolved; do not silently change during a later transcription"
+    },
+    {
+      "routine": "UPDATE",
+      "printedPage": 260,
+      "kind": "prose/listing discrepancy",
+      "observed": "Section 4.5 p.71 describes a half-node-spacing stagnation-step cap. UPDATE p.260 uses 1.5*DSLE; p.264 separately triggers SMOVE at cumulative motion greater than 0.5*DSLE.",
+      "resolution": "Preserve both observations; do not equate the step cap and redistribution trigger."
+    },
+    {
+      "routine": "NCALC",
+      "printedPage": 196,
+      "kind": "loop-carried neighbor selection",
+      "observed": "IM and IP are initialized before the JO loop. At ILE or ITE, its first boundary node changes IP or IM; the change remains in effect for subsequent interior JO values on that crossline.",
+      "resolution": "Preserve this literal listing behavior in the comparison. Current JS interior normals are centered at these stations; equivalence is not established."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "sourcePage": "https://www.grc.nasa.gov/www/wind/valid/nlrflap/nlrflap01/nlrflap01.html",
+  "url": "https://www.grc.nasa.gov/www/wind/valid/nlrflap/nlrflap01/nlrflap.x",
+  "sha256": "f64bfa3d1d24ed724d001de79cbe7e3ae689496137beff377a56dcfb80be598d",
+  "format": "Big-endian Fortran unformatted multiblock PLOT3D, Float32 coordinates",
+  "extraction": "Zone 1: i=29..177, j=k=1; zone 2: i=21..159, j=k=1. Reverse winding only; no smoothing, renormalization or trailing-edge modification.",
+  "coordinateUnits": "feet",
+  "suggestedReferenceChord": 1,
+  "panels": [
+    148,
+    138
+  ],
+  "bounds": {
+    "xMin": -14.301362037658691,
+    "xMax": 11.657482147216797,
+    "yMin": -10.597711563110352,
+    "yMax": 10.597711563110352
+  },
+  "scope": "Geometry example, not an experimental or code-to-code flow benchmark. Domain line is the bounding box of the archived grid; it does not reproduce its curved outer boundary or overset boundary conditions.",
+  "conditionConflict": "The study page lists incidence 10 degrees, while nlrflap.dat and cp.gen specify zero. forces.lis is labeled Laminar Flow, while nlrflap.dat selects Spalart-Allmaras. No experimental data or refinement study is supplied on that page."
+}

@@ -1,0 +1,71 @@
+{
+  "source": "https://www.kbwiki.ercoftac.org/w/index.php?title=UFR_3-01_Evaluation",
+  "sourceTable": 3,
+  "conditionsSource": "https://www.kbwiki.ercoftac.org/w/index.php?title=UFR_3-01_Test_Case",
+  "status": "Reference data only; no matching solver validation completed.",
+  "reynolds": 2510000,
+  "mach": 0.185,
+  "referenceChordMeters": 0.57,
+  "cases": [
+    {
+      "gap": 0.013,
+      "overlap": 0.053,
+      "flapDeflection": 20,
+      "alpha": 6,
+      "cl": 2.416,
+      "cd": 0.0229,
+      "transitionGlobalX": {
+        "mainUpper": [
+          0.027,
+          0.04
+        ],
+        "mainLower": [
+          0.635,
+          0.675
+        ],
+        "flapUpper": [
+          1.063,
+          1.081
+        ],
+        "flapLower": "laminar"
+      }
+    },
+    {
+      "gap": 0.026,
+      "overlap": 0.053,
+      "flapDeflection": 20,
+      "alpha": 13.1,
+      "cl": 3.141,
+      "cd": 0.0445,
+      "transitionGlobalX": {
+        "mainUpper": [
+          0.024,
+          0.035
+        ],
+        "mainLower": [
+          0.71,
+          0.74
+        ],
+        "flapUpper": [
+          1.065,
+          1.08
+        ],
+        "flapLower": "laminar"
+      }
+    }
+  ],
+  "measurementUncertainty": {
+    "clAbsolute": 0.01,
+    "cdRelative": 0.02,
+    "alphaDegrees": 0.05
+  },
+  "geometry": {
+    "url": "https://kbwiki-images.s3.amazonaws.com/5/5f/UFR3-01_nlr7301grid.zip",
+    "sha256": "28aa28b47d981681df3b6300a41a6a9e1c029514ca28cb91bda699b32b7bfc62",
+    "members": [
+      "t/nlrgap13.dat",
+      "t/nlrgap26.dat"
+    ],
+    "note": "Both meshes have finite trailing-edge bases; current sharp-TE solver cannot use these unmodified. Do not silently substitute the NASA WIND geometry or remove the bases."
+  }
+}

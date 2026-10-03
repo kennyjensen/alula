@@ -1,0 +1,58 @@
+{
+  "date": "2026-09-13T01:40:58.057Z",
+  "scope": "Exact SAAB/FLOWNET 2.6% gap wall geometry; preview only. No numerical solution or MSES-example pointwise equivalence claim.",
+  "sourceUrls": {
+    "archive": "https://kbwiki-images.s3.amazonaws.com/5/5f/UFR3-01_nlr7301grid.zip",
+    "description": "https://www.kbwiki.ercoftac.org/w/index.php?title=UFR_3-01_Description",
+    "testCase": "https://www.kbwiki.ercoftac.org/w/index.php?title=UFR_3-01_Test_Case"
+  },
+  "sourceMember": "t/nlrgap26.dat",
+  "sourceMemberSHA": "dd930f6761a24a00d9a97925cc7967045572f43d0162381099ff030795d442f5",
+  "files": [
+    {
+      "path": "third_party/airfoils/nlr7301/NLRdescr.pdf",
+      "sha256": "d60ff47facbfd8eab8a972d682af785a52e1594700629f5a7d1fab820f5e24eb",
+      "bytes": 35118
+    },
+    {
+      "path": "third_party/airfoils/nlr7301/README.md",
+      "sha256": "1c379b8405d8aa7f5e4b918ceeb8f9d410f1115a695d7e0c08cb119f12e3a6fc",
+      "bytes": 4541
+    },
+    {
+      "path": "third_party/airfoils/nlr7301/UFR3-01_nlr7301grid.zip",
+      "sha256": "28aa28b47d981681df3b6300a41a6a9e1c029514ca28cb91bda699b32b7bfc62",
+      "bytes": 2265662
+    },
+    {
+      "path": "third_party/airfoils/nlr7301/ercoftac-description.html",
+      "sha256": "fbe3811a9166df114ec41ebfa5945fd016aa9a3f777cb8d88a2541459d0c8493",
+      "bytes": 31920
+    },
+    {
+      "path": "third_party/airfoils/nlr7301/ercoftac-test-case.html",
+      "sha256": "c64a6fe344ac61a57591c3b925ba9315318de5aca42004d99753efd533ef32d7",
+      "bytes": 50850
+    },
+    {
+      "path": "third_party/airfoils/nlr7301/extract.py",
+      "sha256": "5b24c65182819bb5763e1ec1b41ecdeee9ccbe83c83839709deba8b52948babf",
+      "bytes": 4750
+    },
+    {
+      "path": "third_party/airfoils/nlr7301/extraction.log",
+      "sha256": "f112bbab3ca0a2703f2a493f5c3a1e0bcd97d8bf86b3496ca2024b0fab2ed15e",
+      "bytes": 2193
+    },
+    {
+      "path": "third_party/airfoils/nlr7301/geometry.json",
+      "sha256": "67ffaf84aeb4dde18a7aa7e2e52f0898ee8ff2c2a69947b10413746c7ed96357",
+      "bytes": 48540
+    },
+    {
+      "path": "third_party/airfoils/nlr7301/nlr7301-gap26.dat",
+      "sha256": "96376e8ee665e5c63df8f07467ad7f4d3fd8557f63f36e74712e3bd493c833ff",
+      "bytes": 15911
+    }
+  ]
+}

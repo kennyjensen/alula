@@ -1,0 +1,125 @@
+{
+  "source": "RAE128x24 source/aspect2.5, 32 inlet/outlet, inviscid M=.74 alpha=2.68, cold MUCON=-2/MCRIT=.75",
+  "history": [
+    {
+      "iteration": 8,
+      "step": 0.000031578661986975065,
+      "residual": 0.12944275556182297,
+      "dissipation": {
+        "mucon": -2,
+        "targetMucon": 1,
+        "linearizedMucon": -2,
+        "mcrit": 0.75,
+        "targetMcrit": 0.99
+      },
+      "rejections": [
+        {
+          "step": 0.5477019676450066,
+          "stage": "Newton grid step",
+          "message": "Grid update would lose convexity at passage 1, interval 95, tube 1, corner 0.",
+          "code": "streamtube-grid-step",
+          "diagnostics": {
+            "cell": {
+              "group": 1,
+              "i": 95,
+              "tube": 1,
+              "corner": 0
+            },
+            "stepFraction": 0.000057656652435915296,
+            "boundaryStep": 0.000060691213090437154
+          }
+        }
+      ]
+    },
+    {
+      "iteration": 9,
+      "step": 0.0000015777287668551866,
+      "residual": 0.12944257821288288,
+      "dissipation": {
+        "mucon": -2,
+        "targetMucon": 1,
+        "linearizedMucon": -2,
+        "mcrit": 0.75,
+        "targetMcrit": 0.99
+      },
+      "rejections": [
+        {
+          "step": 0.5477796151309834,
+          "stage": "Newton grid step",
+          "message": "Grid update would lose convexity at passage 1, interval 95, tube 1, corner 0.",
+          "code": "streamtube-grid-step",
+          "diagnostics": {
+            "cell": {
+              "group": 1,
+              "i": 95,
+              "tube": 1,
+              "corner": 0
+            },
+            "stepFraction": 0.000002880225410501858,
+            "boundaryStep": 0.0000030318162215809035
+          }
+        }
+      ]
+    },
+    {
+      "iteration": 10,
+      "step": 3.9407458681839987e-8,
+      "residual": 0.1294425731118318,
+      "dissipation": {
+        "mucon": -2,
+        "targetMucon": 1,
+        "linearizedMucon": -2,
+        "mcrit": 0.75,
+        "targetMcrit": 0.99
+      },
+      "rejections": [
+        {
+          "step": 0.5477837849780249,
+          "stage": "Newton grid step",
+          "message": "Grid update would lose convexity at passage 1, interval 95, tube 1, corner 0.",
+          "code": "streamtube-grid-step",
+          "diagnostics": {
+            "cell": {
+              "group": 1,
+              "i": 95,
+              "tube": 1,
+              "corner": 0
+            },
+            "stepFraction": 1.4387961003051913e-7,
+            "boundaryStep": 1.5145222108475698e-7
+          }
+        }
+      ]
+    },
+    {
+      "iteration": 11,
+      "step": 2.0688912088410016e-8,
+      "residual": 0.12944257043383836,
+      "dissipation": {
+        "mucon": -2,
+        "targetMucon": 1,
+        "linearizedMucon": -2,
+        "mcrit": 0.75,
+        "targetMcrit": 0.99
+      },
+      "rejections": [
+        {
+          "step": 0.547783852213666,
+          "stage": "Newton grid step",
+          "message": "Grid update would lose convexity at passage 1, interval 95, tube 1, corner 0.",
+          "code": "streamtube-grid-step",
+          "diagnostics": {
+            "cell": {
+              "group": 1,
+              "i": 95,
+              "tube": 1,
+              "corner": 0
+            },
+            "stepFraction": 7.55367724141682e-8,
+            "boundaryStep": 7.951239201491389e-8
+          }
+        }
+      ]
+    }
+  ]
+}

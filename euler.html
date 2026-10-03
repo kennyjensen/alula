@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c1117"><title>alula · Euler laboratory</title>
+  <link rel="icon" href="public/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="src/ui/style.css"><link rel="stylesheet" href="src/ui/euler.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="alula home"><img src="public/mark.svg" alt="" width="38" height="38"><span>alula<small>EULER RESEARCH LABORATORY</small></span></a>
+    <div class="top-right"><span class="local-status"><i></i> Runs in your browser</span><a class="quiet" href="./">Airfoil workbench ↗</a><span class="version">v0.3</span></div>
+  </header>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="eyebrow">NUMERICAL EXPERIMENT / 03</div><h1>Coupled Euler flow</h1><p class="subtle intro">Inspect the equations as they converge.</p>
+      <label class="field-label" for="configuration">Verification geometry</label>
+      <select id="configuration"><option value="two">Main element + flap</option><option value="single">Single NACA 0012</option><option value="three">Slat + main + flap</option><option value="channel">Moving-streamline channel</option></select>
+      <p id="geometry-note" class="scope-note"></p>
+      <div class="section-label"><span>FLOW CONDITIONS</span><span class="tag">INVISCID</span></div>
+      <div class="two-fields"><div><label class="field-label" for="mach">Mach number</label><input id="mach" type="number" min="0.15" max="0.5" step="0.05" value="0.3"></div><div><label class="field-label" for="alpha">Inlet angle · °</label><input id="alpha" type="number" min="-6" max="6" step="1" value="0"></div></div>
+      <div class="section-label"><span>GRID RESOLUTION</span><span class="tag">BODY FITTED</span></div>
+      <div class="two-fields"><div><label class="field-label" for="panels">Surface panels</label><select id="panels"><option value="20">20 · coarse</option><option value="40">40 · finer</option></select></div><div><label class="field-label" for="rows">Rows per block</label><select id="rows"><option value="2">2 rows</option><option value="3">3 rows</option><option value="4">4 rows</option></select></div></div>
+      <label class="field-label lab-spaced" for="padding">Outer-domain padding / assembly length</label><select id="padding"><option value="1">1 ×</option><option value="2">2 ×</option><option value="4">4 ×</option></select>
+      <details class="lab-advanced"><summary>Convergence controls</summary><label class="field-label" for="iterations">Maximum Newton iterations</label><input id="iterations" type="number" min="1" max="40" step="1" value="30"></details>
+      <button class="primary" id="solve"><span>Solve Euler system</span><span>↗</span></button><button class="quiet lab-cancel" id="cancel" hidden>Cancel calculation</button>
+      <p class="scope-note">Research meshes are deliberately small. Check grid and domain sensitivity before interpreting the pressure field. Airfoil CL/CD are not released from this solver.</p>
+      <div class="sidebar-footer"><span class="dot"></span> Full conservation · Float64 · global Newton</div>
+    </aside>
+    <main>
+      <div class="workspace-heading"><div><div class="eyebrow">CONSERVATIVE FLOW <span>/</span> REFERENCE SOLVER</div><h2 id="title">Main element + flap</h2></div><button class="quiet export" id="export" disabled>↓ Export state</button></div>
+      <div class="status-line"><span id="status" class="status-pill stale">Ready</span><span id="run-meta">All elements share one flow system.</span></div>
+      <div id="error" class="error" role="alert" hidden></div>
+      <div class="metrics">
+        <div class="metric residual-metric"><span>Euler residual <i>‖R‖∞</i></span><strong id="residual">—</strong><small>Mass, momentum and energy</small></div>
+        <div class="metric residual-metric"><span>Mass imbalance</span><strong id="mass">—</strong><small>Net boundary flux / through-flow</small></div>
+        <div class="metric"><span>Maximum Mach</span><strong id="max-mach">—</strong><small>From local pressure and density</small></div>
+        <div class="metric"><span>Connected fluid cells</span><strong id="cells">—</strong><small id="unknowns">4 conservation laws per cell</small></div>
+      </div>
+      <section class="plot-panel">
+        <div class="panel-heading"><div><span class="panel-index">01</span><h3>Flow field & finite-volume grid</h3></div><div class="plot-toggles"><label><input type="checkbox" id="show-grid" checked> Grid</label><label><input type="checkbox" id="show-cuts" checked> Cuts</label><select id="quantity" aria-label="Flow field quantity"><option value="mach">Mach number</option><option value="cp">Pressure coefficient</option><option value="rho">Density / ρ∞</option></select></div></div>
+        <div class="canvas-wrap lab-field-wrap"><canvas id="field" aria-label="Euler flow field and connected grid"></canvas><div class="canvas-corner" id="field-label">Mesh preview</div></div>
+        <div class="plot-footer"><span id="field-range">No solved field</span><label><input id="near-body" type="checkbox" checked> Focus geometry</label><span id="grid-meta">Positive signed cell areas</span></div>
+      </section>
+      <div class="lower-grid">
+        <section class="plot-panel"><div class="panel-heading"><div><span class="panel-index">02</span><h3>Newton convergence</h3></div><span class="subtle">Scaled equation residual · log₁₀</span></div><canvas id="history" aria-label="Newton residual history"></canvas><div class="plot-footer"><span>Every flow unknown updates simultaneously.</span><span>Target 10⁻⁹</span></div></section>
+        <section class="plot-panel diagnostics-panel"><div class="panel-heading"><div><span class="panel-index">03</span><h3>Conservation audit</h3></div></div><dl>
+          <div><dt>Shared-flux cancellation</dt><dd id="cancellation">—</dd></div><div><dt>Wall mass / energy leakage</dt><dd id="leakage">—</dd></div><div><dt>Max entropy change</dt><dd id="entropy">—</dd></div><div><dt>Max relative h₀ change</dt><dd id="enthalpy">—</dd></div><div><dt>Streamline mass residual</dt><dd id="streamline">Channel case only</dd></div>
+        </dl><p class="diagnostic-note">Conservation does not establish accuracy. Smooth inviscid flow should preserve entropy and total enthalpy; their errors measure numerical dissipation here.</p></section>
+      </div>
+      <div class="development-note"><span class="development-icon">◈</span><div><b>Euler verification stage · boundary layers are not connected yet</b><p>The airfoil case uses fixed cross-lines and shared fluid cuts. The channel case solves internal streamline positions together with Euler flow. This independent finite-volume reference is not the MSES discretization. Coarse-grid pressure forces still fail an airfoil accuracy gate.</p></div></div>
+      <footer class="main-footer"><span>NO BACKEND · NO RUNTIME DEPENDENCIES · GPL v2+</span><span>FIRST-ORDER HLLC · CALORICALLY PERFECT GAS · γ = 1.4</span></footer>
+    </main>
+  </div>
+  <script type="module" src="src/ui/euler.js"></script>
+</body>
+</html>

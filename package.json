@@ -1,0 +1,41 @@
+{
+  "name": "alula",
+  "version": "0.5.0-preview.1",
+  "private": true,
+  "type": "module",
+  "description": "Browser-native multielement airfoil solver research workbench",
+  "license": "GPL-2.0-or-later",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/serve.js",
+    "start": "node scripts/serve.js",
+    "test": "node --test tests/*.test.js",
+    "test:browser": "playwright test",
+    "build": "node scripts/build.js",
+    "build:klu": "node third_party/klu/build.js",
+    "validate": "node scripts/validate.js && node scripts/validate-coupled.js && node scripts/validate-multielement.js && node scripts/validate-euler.js",
+    "test:transition": "node --test --test-concurrency=1 tests/automatic-transition.test.js tests/streamtube-automatic-transition.test.js tests/streamtube-transition-partial.test.js tests/streamtube-trip-events.test.js tests/xfoil-surface-initializer.test.js tests/quad-automatic-display.test.js tests/streamtube-transition-consistency.test.js",
+    "test:streamtube:startup": "node --test --test-concurrency=1 tests/streamtube-startup.test.js tests/streamtube-cold-startup.test.js tests/streamtube-prepared-assembly.test.js tests/streamtube-cold-mach-recovery.test.js tests/streamtube-initial-redistribution.test.js tests/streamtube-tangential-redistribution.test.js tests/streamtube-ises-update.test.js tests/streamtube-ises-checkpoint.test.js",
+    "test:streamtube:coupled": "node --test --test-concurrency=1 tests/contour-arc.test.js tests/streamtube-edge-state.test.js tests/streamtube-bl-initial-state.test.js tests/streamtube-coupled.test.js tests/streamtube-matched-coupled.test.js tests/streamtube-displacement.test.js tests/bounded-partial.test.js tests/streamtube-transition-partial.test.js tests/streamtube-coupled-trust-region.test.js tests/dogleg-active-set.test.js tests/streamtube-trip-events.test.js tests/halfspace-projection.test.js tests/streamtube-corner-constraints.test.js tests/second-order-step.test.js tests/physical-bl-domain.test.js tests/streamtube-bl-domain-constraints.test.js tests/projected-newton.test.js tests/wake-dissipation-jacobian.test.js tests/streamtube-wake-jacobian.test.js tests/bl-active-limits.test.js tests/streamtube-projected-newton.test.js tests/streamtube-isentropic-coupled.test.js tests/streamtube-two-active-finite-base-wakes.test.js",
+    "test:streamtube:transonic": "node --test --test-concurrency=1 tests/streamtube-speed-upwind.test.js tests/streamtube-upwind-cell.test.js tests/streamtube-speed-stencil.test.js tests/streamtube-upwind-channel.test.js tests/streamtube-transonic-nozzle.test.js tests/streamtube-channel-startup.test.js tests/streamtube-channel-automatic.test.js tests/streamtube-transport-chain.test.js tests/streamtube-body-upwind.test.js tests/streamtube-body-flow-restart.test.js tests/streamtube-body-automatic.test.js",
+    "test:coupled:stopping": "node --test --test-concurrency=1 tests/streamtube-coupled-convergence.test.js tests/coupled-stopping-app.test.js",
+    "validate:coupled:stopping": "node scripts/validate-coupled-stopping.js",
+    "test:coupled:robustness-fast": "node --test --test-concurrency=1 tests/gui-default-coupled-catalog.test.js tests/gui-input-comparison.test.js tests/quad-smoothing-status.test.js tests/partial-slor-seed.test.js tests/streamtube-partial-slor.test.js tests/integral-hk-floor.test.js tests/integral-hk-contact.test.js tests/streamtube-event-thickness-roundoff.test.js tests/streamtube-natural-event-speed.test.js tests/streamtube-coupled-startup-extension.test.js tests/rae-transonic-extension.test.js tests/streamtube-coupled-direction-recovery.test.js tests/streamtube-constrained-direction.test.js tests/streamtube-coupled-resolution-recovery.test.js tests/streamtube-coupled-mach-recovery.test.js tests/streamtube-transonic-maintenance.test.js tests/streamtube-passage-progress.test.js tests/streamtube-stalled-transition-resolution.test.js tests/streamtube-coupled-euler-startup.test.js tests/streamtube-convex-updates.test.js tests/streamtube-te-displacement-motion.test.js tests/streamtube-te-chart-invariance.test.js tests/streamtube-wake-seed-domain.test.js tests/streamtube-transition-recovery.test.js tests/streamtube-transition-recovery-observers.test.js tests/streamtube-partial-euler-startup.test.js tests/streamtube-coupled-ncrit-recovery.test.js tests/streamtube-coupled-ncrit-continuation.test.js tests/streamtube-coupled-grid-profile.test.js tests/streamtube-coarse-startup-routing.test.js tests/streamtube-coupled-geometry-replay.test.js tests/streamtube-refined-grid-profile.test.js tests/streamtube-pressure-domain-candidate.test.js tests/transition-auxiliary-precision.test.js",
+    "test:robustness:fast": "node --test --test-concurrency=1 tests/grid-robustness-catalog.test.js tests/streamtube-coupled-grid-levels.test.js tests/streamtube-coarse-startup-routing.test.js tests/streamtube-coupled-grid-level-solve.test.js tests/compensated-sparse-residual.test.js tests/streamtube-coupled-grid-profile.test.js tests/streamtube-grid-count-metadata.test.js",
+    "test:reliability:fast": "node --test --test-concurrency=1 tests/solver-reliability.test.js tests/airfoil-entry-formats.test.js tests/finite-base-wake-potential.test.js tests/finite-base-cut-reference.test.js tests/guide-x-bracket.test.js tests/stagnation-guide-connector.test.js tests/stagnation-guide-initializer-parity.test.js tests/passage-density-guides.test.js tests/panel-potential-guides.test.js tests/finite-base-displacement.test.js tests/panel-finite-base-bl.test.js tests/finite-base-viscous-observables.test.js tests/panel-shared-initializer.test.js tests/multielement-restart.test.js tests/quad-coupled-finite-base-display.test.js tests/streamtube-amplification-event.test.js tests/xfoil-profile-relaxation.test.js tests/xfoil-profile-input-domain.test.js tests/streamtube-coupled-xfoil-update.test.js tests/streamtube-transition-recovery.test.js tests/streamtube-xfoil-checkpoint.test.js tests/bl-domain-diagnostics.test.js tests/streamtube-wake-correspondence.test.js tests/streamtube-wake-arc-correspondence.test.js tests/streamtube-coupled-wake-recovery.test.js tests/streamtube-coupled-wake-orchestration.test.js tests/streamtube-coupled-mach-phase.test.js tests/streamtube-natural-transition-events.test.js tests/streamtube-coupled-coarse-profile.test.js tests/streamtube-cold-wake-initialization.test.js tests/streamtube-coupled-mrchdu-predictor.test.js tests/warm-boundary-increment-extension.test.js tests/streamtube-warm-displacement-startup.test.js tests/streamtube-coupled-admissibility-diagnostics.test.js tests/streamtube-coupled-flow-restart.test.js tests/streamtube-coupled-mach-assembly.test.js tests/streamtube-coarse-startup.test.js tests/streamtube-coarse-startup-routing.test.js tests/quad-coupled-failure.test.js tests/streamtube-two-active-finite-base-wakes.test.js tests/streamtube-physical-density-refinement.test.js tests/streamtube-hybrid-coupled-refinement.test.js tests/streamtube-finite-gap-refinement.test.js tests/streamtube-hybrid-refinement.test.js tests/streamtube-finite-gap-checkpoint.test.js tests/automatic-transition.test.js tests/streamtube-transition-consistency.test.js",
+    "validate:reliability:smoke": "node scripts/validate-solver-reliability.js --stage=solve --tier=smoke",
+    "test:coupled:robustness-browser": "playwright test tests/browser/rae-transonic-viscous.spec.js tests/browser/naca-coarse-viscous.spec.js tests/browser/custom-three-viscous.spec.js --workers=1",
+    "test:rae-inviscid": "node --test --test-concurrency=1 tests/rae-inviscid-step-reproduction.test.js tests/rae-small-alpha-newton.test.js tests/streamtube-ises-update.test.js tests/streamtube-ises-checkpoint.test.js",
+    "build:smoothing": "node src/geometry/wasm/build.js",
+    "status:rae": "node scripts/validation/rae-status.js",
+    "verify:rae:app": "playwright test tests/browser/rae-default-startup.spec.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1",
+    "assemblyscript": "0.28.9",
+    "cdt2d": "1.0.0",
+    "esbuild": "0.28.2"
+  }
+}

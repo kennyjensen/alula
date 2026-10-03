@@ -1,0 +1,89 @@
+{
+  "retrievedAt": "2026-09-13T00:18:18.893940+00:00",
+  "files": [
+    {
+      "path": "30p-30n.dat",
+      "url": "https://m-selig.ae.illinois.edu/ads/coord_seligFmt/30p-30n.dat",
+      "mirrorUrl": "https://m-selig.ae.illinois.edu/ads/coord_updates/30p-30n.dat",
+      "mirrorBytesEqual": true,
+      "bytes": 14074,
+      "sha256": "1b973fea5899d4558cad9643c823795049ad98450a1c472599a9f01cf11f00ad",
+      "role": "Exact downloaded coordinate sample used for the preset; CRLF retained."
+    },
+    {
+      "path": "workshop/3-element-airfoil.IGS",
+      "url": "https://cfd.ku.edu/hiocfd/3-element-airfoil.IGS",
+      "bytes": 15580,
+      "sha256": "f8013c62a99f12d7d58978ed78524e3b4fae950fdd21b14932965ecd0998bd6b",
+      "role": "Original workshop CAD archive only; not the GUI preset and not converted."
+    },
+    {
+      "path": "workshop/3-element-airfoil.iges",
+      "url": "https://cfd.ku.edu/hiocfd/3-element-airfoil.iges",
+      "bytes": 52245,
+      "sha256": "eb3ef3adec93503f5bf42741152c368e246b4f68cc870951c408d8cc7b014070",
+      "role": "Original workshop CAD archive only; not the GUI preset and not converted."
+    }
+  ],
+  "coordinatePublisher": "UIUC Airfoil Data Site, Michael Selig",
+  "coordinateContributor": "Brent Pomeroy, credited in UIUC update history on 2016-04-08",
+  "historyUrl": "https://m-selig.ae.illinois.edu/ads_history.html",
+  "coordinates": {
+    "ordering": [
+      "Slat",
+      "Main Element",
+      "Flap"
+    ],
+    "format": "Comment-delimited XY point blocks, already deployed",
+    "units": "x/c and y/c; c is stowed assembly reference chord",
+    "referenceChord": 1,
+    "transformApplied": null,
+    "slat": {
+      "deflectionMagnitudeDegrees": 30,
+      "gapPercentChord": 2.95,
+      "overhangPercentChord": -2.5
+    },
+    "flap": {
+      "deflectionMagnitudeDegrees": 30,
+      "gapPercentChord": 1.27,
+      "overhangPercentChord": 0.25
+    }
+  },
+  "experimentReference": {
+    "title": "Three-Dimensional Effects on Multi-Element High Lift Computations",
+    "authors": [
+      "Christopher L. Rumsey",
+      "Elizabeth M. Lee-Rausch",
+      "Ralph D. Watson"
+    ],
+    "report": "AIAA 2002-0845",
+    "section": "2, printed page 2 (PDF page 3)",
+    "url": "https://fun3d.larc.nasa.gov/papers/aiaa2002-0845.pdf",
+    "catalogUrl": "https://ntrs.nasa.gov/citations/20020012701",
+    "stowedChordMeters": 0.5588,
+    "nominalMach": 0.2,
+    "reynolds": 9000000,
+    "context": "NASA Langley LTPT; MDA LB546 with LS12 slat, W10BB main, F22 flap. Rigging and rounded deployed leading-edge positions agree; this does not establish pointwise equality between the UIUC sample and the original wind-tunnel surface."
+  },
+  "workshopReference": {
+    "case": "C3.1",
+    "url": "https://cfd.ku.edu/hiocfd/case_c3.1.html",
+    "referenceChordMeters": 0.5588,
+    "mach": 0.2,
+    "alphaDegrees": 16,
+    "reynolds": 9000000,
+    "transition": "fully turbulent; no wind-tunnel corrections"
+  },
+  "rights": {
+    "status": "No explicit license or redistribution grant found in downloaded coordinate/CAD files or reviewed publisher landing/history/FAQ pages. Preserve attribution; do not relabel data as GPL or public domain.",
+    "coordinateNotice": "UIUC site footer identifies copyright UIUC Applied Aerodynamics Group. No license is embedded in the DAT.",
+    "paperCatalogNotice": "NASA NTRS labels the cited NASA paper Public Use Permitted; this is not an explicit license for the separately hosted UIUC/IGES coordinate files."
+  },
+  "limitations": [
+    "UIUC sample is exact as published by UIUC, not certified pointwise original experimental manufacturing geometry.",
+    "Flap is open with a finite endpoint gap. No endpoint has been added, averaged, extended or sharpened.",
+    "Current sharp-trailing-edge solver rejects the exact flap; preset is for exact geometry preview/import until blunt-TE support or an explicitly named approximation is implemented.",
+    "Workshop CAD is a distinct spline representation with finite base lines and inconsistent exported unit labels; no CAD-to-DAT equivalence or conversion is claimed.",
+    "BANC acoustic 30P30N slat variants have modified trailing-edge thickness and must not be substituted silently."
+  ]
+}

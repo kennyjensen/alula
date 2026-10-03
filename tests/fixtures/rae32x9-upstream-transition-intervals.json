@@ -1,0 +1,45 @@
+{
+  "provenance": {
+    "case": "RAE32x9, cold coupled update 7",
+    "mach": 0.74,
+    "alpha": 2.68,
+    "referenceReynolds": 2700000,
+    "kernelReynolds": 2689608.213390552,
+    "from": 41,
+    "to": 40,
+    "description": "Accepted ordinary Newton trial after natural transition transfer; all primitives and downstream shear are held fixed."
+  },
+  "parameters": {
+    "reynolds": 2689608.213390552,
+    "mach": 0.74,
+    "gamma": 1.4,
+    "ncrit": 4,
+    "velocityConvention": "physical",
+    "exactJacobian": true,
+    "transitionTolerance": 1e-12
+  },
+  "upstream": {
+    "s": 0.6032800395133187,
+    "aux": 0.8901853686444102,
+    "theta": 0.00026620742997649513,
+    "deltaStar": 0.0009365337843226642,
+    "ue": 1.6514450995116525
+  },
+  "downstream": {
+    "s": 0.6346787764958881,
+    "aux": 0.11423526669432263,
+    "theta": 0.00029818909694308727,
+    "deltaStar": 0.0027202821800130497,
+    "ue": 1.6258765999008697
+  },
+  "following": {
+    "s": 0.6656258205752186,
+    "aux": 0.0664852374637486,
+    "theta": 0.0008347111364060323,
+    "deltaStar": 0.002636264930059943,
+    "ue": 1.2940201330596972
+  },
+  "tripS": 1.0262522770399822,
+  "initializedAux": 0.11423526669432263,
+  "shearWeight": 20
+}

@@ -1,0 +1,14 @@
+{
+  "hashes": {
+    "tests/fixtures/30p-cove-position-stations.json": "8a849340ed36d0a9b9ec60fdb090b5c1f7ccbf3f71d89667124c25369049c1a5",
+    "tests/fixtures/30p-cove-position-dense-qr.json": "fac92e17798ac7f8db95fd6b3f146260cad11a2141deefaf72456c581ec953fa",
+    "tests/fixtures/30p-main-position-stations.json": "ba8e50c61b0dc134f9d706817193cdf45a3560367ffb924de123a9e971c9426d",
+    "tests/fixtures/30p-passage-counts.json": "807640f23839d5b34e6f49e3aaa507b40d61cf8be36b95e935eed402b365849a",
+    "tests/fixtures/three-passage-counts.json": "9e8351b72f262c0853ddee861464298a9af73ec91905726cb2d4d7b01c656dad"
+  },
+  "source": "docs/solver-reliability/gui-defaults-current/30p30n/planner-capture/planner-input.json",
+  "sourceScope": "Exact captured geometry-only passage-planner arguments. Cove and main normalized stations and fixed endpoint targets use the initial feasible count schedule [32,43,51,11,25,22,32].",
+  "denseQr": "Slat cove reference produced by scripts/validation/position-growth-projection-prototype.js before chain replacement; twice-reorthogonalized row QR, 85 active-set steps, original raw KKT residuals in saved fixture.",
+  "threeSource": "docs/solver-reliability/three-passage-quadratic/baseline/passage-input.json",
+  "flowPerformed": false
+}

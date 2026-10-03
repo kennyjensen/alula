@@ -1,0 +1,349 @@
+{
+  "scope": "Ten exact local transition failures from cold RAE 2822 8x11 BL initialization, Mach .74 alpha 2.68 Re 2.7e6 Ncrit 4. Local Reynolds number retains the solver length normalization.",
+  "sourceCommit": "7d8826dcaebd51f22bc130856f92bb4e9b58b4bb",
+  "originalFailure": "XFOIL_TRANSITION_ROOT_ACCURACY",
+  "cases": [
+    {
+      "parameters": {
+        "reynolds": 2689608.213390552,
+        "mach": 0.74,
+        "gamma": 1.4,
+        "ncrit": 4,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.38560739035010494,
+          "aux": 1.5352688771619875e-08,
+          "theta": 0.00010754984545425865,
+          "deltaStar": 0.0003578530784814452,
+          "ue": 1.6316689024316493
+        },
+        "downstream": {
+          "s": 0.5728238125691472,
+          "aux": 0.12348668980346887,
+          "theta": 0.0008408489266069494,
+          "deltaStar": 0.02210388588520412,
+          "ue": 1.4679720092431405
+        },
+        "tripS": 1.7976931348623157e+308
+      }
+    },
+    {
+      "parameters": {
+        "reynolds": 2689608.213390552,
+        "mach": 0.74,
+        "gamma": 1.4,
+        "ncrit": 4,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.38560739035010494,
+          "aux": 3.070537754323975e-08,
+          "theta": 5.377492272712933e-05,
+          "deltaStar": 0.0001789265392407226,
+          "ue": 1.6316689024316493
+        },
+        "downstream": {
+          "s": 0.5728238125691472,
+          "aux": 0.12348668980346887,
+          "theta": 0.0004204244633034747,
+          "deltaStar": 0.01105194294260206,
+          "ue": 1.4679720092431405
+        },
+        "tripS": 1.7976931348623157e+308
+      }
+    },
+    {
+      "parameters": {
+        "reynolds": 2689608.213390552,
+        "mach": 0.74,
+        "gamma": 1.4,
+        "ncrit": 4,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.38560739035010494,
+          "aux": 6.14107550864795e-08,
+          "theta": 2.6887461363564664e-05,
+          "deltaStar": 8.94632696203613e-05,
+          "ue": 1.6316689024316493
+        },
+        "downstream": {
+          "s": 0.5728238125691472,
+          "aux": 0.12348668980346887,
+          "theta": 0.00021021223165173736,
+          "deltaStar": 0.00552597147130103,
+          "ue": 1.4679720092431405
+        },
+        "tripS": 1.7976931348623157e+308
+      }
+    },
+    {
+      "parameters": {
+        "reynolds": 2689608.213390552,
+        "mach": 0.74,
+        "gamma": 1.4,
+        "ncrit": 4,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.38560739035010494,
+          "aux": 1.22821510172959e-07,
+          "theta": 1.3443730681782332e-05,
+          "deltaStar": 4.473163481018065e-05,
+          "ue": 1.6316689024316493
+        },
+        "downstream": {
+          "s": 0.5728238125691472,
+          "aux": 0.12348668980346887,
+          "theta": 0.00010510611582586868,
+          "deltaStar": 0.002762985735650515,
+          "ue": 1.4679720092431405
+        },
+        "tripS": 1.7976931348623157e+308
+      }
+    },
+    {
+      "parameters": {
+        "reynolds": 2689608.213390552,
+        "mach": 0.74,
+        "gamma": 1.4,
+        "ncrit": 4,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.38560739035010494,
+          "aux": 2.45643020345918e-07,
+          "theta": 6.721865340891166e-06,
+          "deltaStar": 2.2365817405090324e-05,
+          "ue": 1.6316689024316493
+        },
+        "downstream": {
+          "s": 0.5728238125691472,
+          "aux": 0.12348668980346887,
+          "theta": 5.255305791293434e-05,
+          "deltaStar": 0.0013814928678252574,
+          "ue": 1.4679720092431405
+        },
+        "tripS": 1.7976931348623157e+308
+      }
+    },
+    {
+      "parameters": {
+        "reynolds": 2689608.213390552,
+        "mach": 0.74,
+        "gamma": 1.4,
+        "ncrit": 4,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.38560739035010494,
+          "aux": 4.91286040691836e-07,
+          "theta": 3.360932670445583e-06,
+          "deltaStar": 1.1182908702545162e-05,
+          "ue": 1.6316689024316493
+        },
+        "downstream": {
+          "s": 0.5728238125691472,
+          "aux": 0.12348668980346887,
+          "theta": 2.627652895646717e-05,
+          "deltaStar": 0.0006907464339126287,
+          "ue": 1.4679720092431405
+        },
+        "tripS": 1.7976931348623157e+308
+      }
+    },
+    {
+      "parameters": {
+        "reynolds": 2689608.213390552,
+        "mach": 0.74,
+        "gamma": 1.4,
+        "ncrit": 4,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.38560739035010494,
+          "aux": 9.82572081383672e-07,
+          "theta": 1.6804663352227915e-06,
+          "deltaStar": 5.591454351272581e-06,
+          "ue": 1.6316689024316493
+        },
+        "downstream": {
+          "s": 0.5728238125691472,
+          "aux": 0.12348668980346887,
+          "theta": 1.3138264478233585e-05,
+          "deltaStar": 0.00034537321695631435,
+          "ue": 1.4679720092431405
+        },
+        "tripS": 1.7976931348623157e+308
+      }
+    },
+    {
+      "parameters": {
+        "reynolds": 2689608.213390552,
+        "mach": 0.74,
+        "gamma": 1.4,
+        "ncrit": 4,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.38560739035010494,
+          "aux": 1.965144162767344e-06,
+          "theta": 8.402331676113957e-07,
+          "deltaStar": 2.7957271756362905e-06,
+          "ue": 1.6316689024316493
+        },
+        "downstream": {
+          "s": 0.5728238125691472,
+          "aux": 0.12348668980346887,
+          "theta": 6.569132239116792e-06,
+          "deltaStar": 0.00017268660847815718,
+          "ue": 1.4679720092431405
+        },
+        "tripS": 1.7976931348623157e+308
+      }
+    },
+    {
+      "parameters": {
+        "reynolds": 2689608.213390552,
+        "mach": 0.74,
+        "gamma": 1.4,
+        "ncrit": 4,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.38560739035010494,
+          "aux": 3.930288325534688e-06,
+          "theta": 4.2011658380569787e-07,
+          "deltaStar": 1.3978635878181452e-06,
+          "ue": 1.6316689024316493
+        },
+        "downstream": {
+          "s": 0.5728238125691472,
+          "aux": 0.12348668980346887,
+          "theta": 3.284566119558396e-06,
+          "deltaStar": 8.634330423907859e-05,
+          "ue": 1.4679720092431405
+        },
+        "tripS": 1.7976931348623157e+308
+      }
+    },
+    {
+      "parameters": {
+        "reynolds": 2689608.213390552,
+        "mach": 0.74,
+        "gamma": 1.4,
+        "ncrit": 4,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.38560739035010494,
+          "aux": 7.860576651069376e-06,
+          "theta": 2.1005829190284894e-07,
+          "deltaStar": 6.989317939090726e-07,
+          "ue": 1.6316689024316493
+        },
+        "downstream": {
+          "s": 0.5728238125691472,
+          "aux": 0.12348668980346887,
+          "theta": 1.642283059779198e-06,
+          "deltaStar": 4.3171652119539294e-05,
+          "ue": 1.4679720092431405
+        },
+        "tripS": 1.7976931348623157e+308
+      }
+    }
+  ],
+  "independentFractionRoots": [
+    {
+      "i": 0,
+      "fraction": 0.13311361085808526,
+      "amplification": 30.049519060492113,
+      "signChanges": 1
+    },
+    {
+      "i": 1,
+      "fraction": 0.04789706493929431,
+      "amplification": 83.51242348221126,
+      "signChanges": 1
+    },
+    {
+      "i": 2,
+      "fraction": 0.024621894610396024,
+      "amplification": 162.45703279114787,
+      "signChanges": 1
+    },
+    {
+      "i": 3,
+      "fraction": 0.014675823356201555,
+      "amplification": 272.55710169683385,
+      "signChanges": 1
+    },
+    {
+      "i": 4,
+      "fraction": 0.019138435094191573,
+      "amplification": 209.0034916319874,
+      "signChanges": 1
+    },
+    {
+      "i": 5,
+      "fraction": 0.03719597107478703,
+      "amplification": 107.53851590392235,
+      "signChanges": 1
+    },
+    {
+      "i": 6,
+      "fraction": 0.07755779007773819,
+      "amplification": 51.57443358848588,
+      "signChanges": 1
+    },
+    {
+      "i": 7,
+      "fraction": 0.16771301781890285,
+      "amplification": 23.85025573122361,
+      "signChanges": 1
+    },
+    {
+      "i": 8,
+      "fraction": 0.3596170174827794,
+      "amplification": 11.122937148828846,
+      "signChanges": 1
+    },
+    {
+      "i": 9,
+      "fraction": 0.7482241827476284,
+      "amplification": 5.345988693132183,
+      "signChanges": 1
+    }
+  ]
+}

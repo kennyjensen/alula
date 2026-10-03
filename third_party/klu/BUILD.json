@@ -1,0 +1,21 @@
+{
+  "compilerVersion": "Ubuntu clang version 19.1.7 (20ubuntu4)\nTarget: aarch64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /tmp/mses-wasm-toolchain/usr/lib/llvm-19/bin",
+  "target": "wasm32-wasi",
+  "options": [
+    "--target=wasm32-wasi",
+    "-O3",
+    "-DNDEBUG",
+    "-DNPRINT=",
+    "-DNTIMER",
+    "-DDINT",
+    "-mexec-model=reactor",
+    "-Wl,--strip-all",
+    "-Wl,-z,stack-size=8388608",
+    "-Wl,--initial-memory=16777216",
+    "-Wl,--max-memory=2147483648"
+  ],
+  "bridgeSha256": "aff91944c15e1cbce0f67aa4cb3abca78672ac7b863f19c2923b4fd152c134b0",
+  "buildScriptSha256": "661bd05945a291821d3ed3f0ac88961ce1213f6b5714fd79bbc3ffff88374c61",
+  "wasmSha256": "e049701c17e87ea1760f7084a358593ebfd0cf2fbb04d44a11332e0c3e1e74c8",
+  "librariesNote": "Requires WASI libc/libm and LLVM wasm32 compiler builtins; preserve the supplied copyright notices when redistributing."
+}

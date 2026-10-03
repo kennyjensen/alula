@@ -1,0 +1,60 @@
+{
+  "origin": {
+    "path": "docs/accepted-exact-wake-followup.json",
+    "sha256": "416797e785bd3617e456c7b60d0516804adf90980463c8a29baf9d5e291f92e6"
+  },
+  "cases": [
+    {
+      "name": "retained lower-surface Hk clamp",
+      "parameters": {
+        "reynolds": 1000000,
+        "mach": 0.2,
+        "gamma": 1.4,
+        "ncrit": 9,
+        "velocityConvention": "physical",
+        "exactJacobian": true
+      },
+      "input": {
+        "regime": "laminar",
+        "upstream": {
+          "s": 0.005582995624389899,
+          "aux": -0.0017138894113267029,
+          "theta": 0.000006940599249265157,
+          "deltaStar": 0.000018922812600779393,
+          "ue": 1.3768500168846505
+        },
+        "downstream": {
+          "s": 0.00707168296845127,
+          "aux": 0.04438950341207529,
+          "theta": 0.00014533009869925314,
+          "deltaStar": 0.00014579570854485714,
+          "ue": 0.4471040537792896
+        }
+      }
+    },
+    {
+      "name": "saturated wake upwind exponent",
+      "parameters": {
+        "reynolds": 1000000,
+        "mach": 0.2
+      },
+      "input": {
+        "regime": "wake",
+        "upstream": {
+          "s": 0.3,
+          "theta": 0.001,
+          "deltaStar": 0.00105,
+          "ue": 1,
+          "aux": 0.02
+        },
+        "downstream": {
+          "s": 0.31,
+          "theta": 0.0011,
+          "deltaStar": 0.044,
+          "ue": 0.95,
+          "aux": 0.025
+        }
+      }
+    }
+  ]
+}

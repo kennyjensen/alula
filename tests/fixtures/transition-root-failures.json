@@ -1,0 +1,498 @@
+{
+  "scope": "Observed failure of the current strict TRCHEK algorithm, not a permanent physical-invalidity requirement.",
+  "provenance": {
+    "resultPath": "docs/transition-root-failure-capture/rae074-next-update/result.json",
+    "resultSha256": "8d98539e1cc3d12150a6de6c9a3d5b3f7d593971e78386d3112d31236364c48b",
+    "reportPath": "docs/transition-root-failure-capture/rae074-next-update/report.json",
+    "reportSha256": "9bf98e38c95c54a22076c3396d60d3639f7ffb15c9f39c73e5c7beb61fd69994",
+    "sourceHashes": {
+      "src/viscous/integral.js": "691418fb2d429b24a270b304e26e009e881bd64234790e4b07325bc1862252ad",
+      "src/viscous/xfoil/xblsys.js": "52524f89ee3eff51c2d3c4ef0c9e0d02d0ac63787209f5e42a1a9d204c57a9b9",
+      "src/viscous/xfoil/xbl.js": "72961951cc15895686b8ae7b48671f703e17e557984910e13709533db949d016"
+    },
+    "capture": "One ordinary global update attempted; thirteen rejected local-root calls, zero accepted global updates."
+  },
+  "cases": [
+    {
+      "name": "rejected-trial-00",
+      "step": 0.03183431342455343,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.3806313507274282,
+            "aux": 3.9288924280726456,
+            "theta": 0.00015826119772012443,
+            "deltaStar": 0.0004481554773815569,
+            "ue": 1.659599240658986
+          },
+          "downstream": {
+            "s": 0.41185005539954844,
+            "aux": 0.0073331754491499195,
+            "theta": 0.00013185263694841001,
+            "deltaStar": 0.00043056729197664027,
+            "ue": 1.8362634952514671
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-01",
+      "step": 0.015917156712276715,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.3806391988238339,
+            "aux": 3.925968983316861,
+            "theta": 0.0001577222637894715,
+            "deltaStar": 0.00044717216169627624,
+            "ue": 1.6631433209136328
+          },
+          "downstream": {
+            "s": 0.41185854036438285,
+            "aux": 0.005842020759194697,
+            "theta": 0.0001309207220306315,
+            "deltaStar": 0.00042820132883386754,
+            "ue": 1.8471746554479087
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-02",
+      "step": 0.007958578356138358,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.38064312304538883,
+            "aux": 3.923754629316129,
+            "theta": 0.00015745279682414506,
+            "deltaStar": 0.00044668050385363587,
+            "ue": 1.6649153610409562
+          },
+          "downstream": {
+            "s": 0.41186278302013984,
+            "aux": 0.005096443414217087,
+            "theta": 0.00013045476457174222,
+            "deltaStar": 0.00042701834726248123,
+            "ue": 1.8526302355461293
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-03",
+      "step": 0.003979289178069179,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.3806450851988913,
+            "aux": 3.923854553298717,
+            "theta": 0.00015731806334148184,
+            "deltaStar": 0.0004464346749323157,
+            "ue": 1.6658013811046177
+          },
+          "downstream": {
+            "s": 0.4118649043907402,
+            "aux": 0.004723654741728282,
+            "theta": 0.00013022178584229757,
+            "deltaStar": 0.000426426856476788,
+            "ue": 1.8553580255952398
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-04",
+      "step": 0.0019896445890345894,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.38064606628624537,
+            "aux": 3.9230907241632282,
+            "theta": 0.0001572506966001502,
+            "deltaStar": 0.00044631176047165555,
+            "ue": 1.6662443911364486
+          },
+          "downstream": {
+            "s": 0.41186596508664264,
+            "aux": 0.004537260405483879,
+            "theta": 0.00013010529647757525,
+            "deltaStar": 0.0004261311110839414,
+            "ue": 1.856721920619795
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-05",
+      "step": 0.0009948222945172947,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.38064655683256315,
+            "aux": 3.922708809595484,
+            "theta": 0.0001572170132294844,
+            "deltaStar": 0.00044625030324132553,
+            "ue": 1.6664658961523642
+          },
+          "downstream": {
+            "s": 0.41186649543723425,
+            "aux": 0.004444063237361678,
+            "theta": 0.00013004705179521408,
+            "deltaStar": 0.00042598323838751817,
+            "ue": 1.8574038681320724
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-06",
+      "step": 0.0004974111472586473,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.38064680210638113,
+            "aux": 3.922517852311612,
+            "theta": 0.00015720017154415152,
+            "deltaStar": 0.0004462195746261606,
+            "ue": 1.6665766486603217
+          },
+          "downstream": {
+            "s": 0.41186676061318933,
+            "aux": 0.004397464653300577,
+            "theta": 0.00013001792945403353,
+            "deltaStar": 0.0004259093020393065,
+            "ue": 1.8577448418882112
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-07",
+      "step": 0.00024870557362932367,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.3806469247434549,
+            "aux": 3.922422373669676,
+            "theta": 0.00015719175070148507,
+            "deltaStar": 0.000446204210318578,
+            "ue": 1.6666320249143007
+          },
+          "downstream": {
+            "s": 0.41186689320133146,
+            "aux": 0.004374165361270026,
+            "theta": 0.00013000336828344322,
+            "deltaStar": 0.00042587233386520067,
+            "ue": 1.8579153287662806
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-08",
+      "step": 0.00012435278681466184,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.3806469860620328,
+            "aux": 3.922374634348708,
+            "theta": 0.00015718754028015185,
+            "deltaStar": 0.0004461965281647868,
+            "ue": 1.6666597130412901
+          },
+          "downstream": {
+            "s": 0.41186695949544344,
+            "aux": 0.004362515715254751,
+            "theta": 0.00012999608769814807,
+            "deltaStar": 0.00042585384977814777,
+            "ue": 1.8580005722053154
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-09",
+      "step": 0.00006217639340733092,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.38064701672133194,
+            "aux": 3.922350764688224,
+            "theta": 0.0001571854350694852,
+            "deltaStar": 0.0004461926870878911,
+            "ue": 1.6666735571047848
+          },
+          "downstream": {
+            "s": 0.41186699264250975,
+            "aux": 0.004356690892247114,
+            "theta": 0.0001299924474055005,
+            "deltaStar": 0.00042584460773462135,
+            "ue": 1.8580431939248327
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-10",
+      "step": 0.00003108819670366546,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.38064703205098405,
+            "aux": 3.9223388298579818,
+            "theta": 0.0001571843824641519,
+            "deltaStar": 0.00044619076654944334,
+            "ue": 1.6666804791365322
+          },
+          "downstream": {
+            "s": 0.41186700921604547,
+            "aux": 0.004353778480743295,
+            "theta": 0.00012999062725917672,
+            "deltaStar": 0.0004258399867128581,
+            "ue": 1.8580645047845914
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-11",
+      "step": 0.00001554409835183273,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.3806470397158109,
+            "aux": 3.922332862442861,
+            "theta": 0.00015718385616148524,
+            "deltaStar": 0.00044618980628021945,
+            "ue": 1.6666839401524058
+          },
+          "downstream": {
+            "s": 0.4118670175028141,
+            "aux": 0.004352322274991386,
+            "theta": 0.00012998971718601482,
+            "deltaStar": 0.00042583767620197645,
+            "ue": 1.8580751602144707
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    },
+    {
+      "name": "rejected-trial-12",
+      "step": 0.000007772049175916365,
+      "stage": "material-trip transfer",
+      "message": "Transition amplification root did not reach the requested accuracy.",
+      "payload": {
+        "version": 1,
+        "code": "XFOIL_TRANSITION_ROOT_ACCURACY",
+        "parameters": {
+          "reynolds": 2689608.213390552,
+          "mach": 0.74,
+          "gamma": 1.4,
+          "ncrit": 4,
+          "velocityConvention": "physical",
+          "exactJacobian": true,
+          "transitionTolerance": 1e-12
+        },
+        "method": "transitionCheck",
+        "input": {
+          "upstream": {
+            "s": 0.38064704354822443,
+            "aux": 3.9223298787353005,
+            "theta": 0.00015718359301015192,
+            "deltaStar": 0.0004461893261456075,
+            "ue": 1.6666856706603426
+          },
+          "downstream": {
+            "s": 0.41186702164619854,
+            "aux": 0.004351594172115431,
+            "theta": 0.00012998926214943387,
+            "deltaStar": 0.00042583652094653566,
+            "ue": 1.8580804879294104
+          },
+          "tripS": 1.7976931348623157e+308
+        }
+      }
+    }
+  ]
+}

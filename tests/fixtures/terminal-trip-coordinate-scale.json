@@ -1,0 +1,41 @@
+{
+  "provenance": {
+    "scope": "Exact local BL fixture extracted from the failed complete Jacobian audit of the full-thickness literal ISET startup at 32 surface intervals / 11 streamtubes. No converged flow or original-Fortran parity is claimed.",
+    "source": "docs/current-multielement-32x11-literal-transition-local.json",
+    "sha256": "a839ca0ba92da0629f389c0671f1e4ae7182906e30943af3e81dc528c75a732f",
+    "station": 69,
+    "completeRow": 22193,
+    "label": "flap upper TE, i176; previous i175"
+  },
+  "parameters": {
+    "reynolds": 981851.3664284266,
+    "mach": 0.2,
+    "gamma": 1.4,
+    "ncrit": 9,
+    "velocityConvention": "physical",
+    "exactJacobian": true,
+    "transitionTolerance": 1e-12
+  },
+  "input": {
+    "upstream": {
+      "aux": 1.5481661184290646e-9,
+      "theta": 0.0011810440774939364,
+      "deltaStar": 0.0028345057859854475,
+      "ue": 0.8974719544279476,
+      "s": 0.3252518317650565
+    },
+    "downstream": {
+      "aux": 0.06873600436576806,
+      "theta": 0.001183786670274692,
+      "deltaStar": 0.0028410880086592607,
+      "ue": 0.721280201141774,
+      "s": 0.3255629323404821
+    },
+    "tripS": 0.3255629323404821
+  },
+  "expected": {
+    "residual": [-0.02780088223883944, -0.953619470391378, 0.303367310833483],
+    "transitionS": 0.3255629323404821,
+    "forced": true
+  }
+}

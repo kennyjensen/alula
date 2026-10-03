@@ -1,0 +1,38 @@
+{
+  "parameters": {
+    "reynolds": 2689608.213390552,
+    "mach": 0.74,
+    "gamma": 1.4,
+    "ncrit": 4,
+    "velocityConvention": "physical",
+    "exactJacobian": true,
+    "transitionTolerance": 1e-12
+  },
+  "input": {
+    "regime": "wake",
+    "upstream": {
+      "s": 4.364668333706743,
+      "aux": 0.003365498777587218,
+      "theta": 0.00543604264087252,
+      "deltaStar": 0.006379919925454707,
+      "ue": 0.8963762073666236
+    },
+    "downstream": {
+      "s": 5.03245003582298,
+      "aux": 0.003132808011563233,
+      "theta": 0.0054400277893230705,
+      "deltaStar": 0.0063839215095274,
+      "ue": 0.8960809522821909
+    }
+  },
+  "provenance": {
+    "case": "RAE2822 M0.74 alpha2.68 Re2.7e6 Ncrit4, requested 8x11 grid, experimental Euler startup then logarithmic coupled update37",
+    "checkpoint": "docs/solver-reliability/rae-inviscid-audit/fixtures/rae8x11-coupled-wake-floor.json",
+    "sha256": "4a00ed5a02f54daf26473a09180f78b604d829ce0c249abcf844312925261d4e",
+    "stations": [
+      75,
+      76
+    ],
+    "note": "Extracted native physical wake interval. Both stations contact the existing Hk=1.00005 clamp. This is a stalled state, not a converged solution."
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+docs/
+results/
+artifacts/
+ci-artifacts/
+test-results/
+playwright-report/
+.DS_Store

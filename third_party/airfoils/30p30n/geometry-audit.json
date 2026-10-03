@@ -1,0 +1,124 @@
+{
+  "passed": true,
+  "meaning": "Successful source inspection; NOT a solver or aerodynamic acceptance result.",
+  "sourceSha256": "1b973fea5899d4558cad9643c823795049ad98450a1c472599a9f01cf11f00ad",
+  "sourceBytes": 14074,
+  "geometryChanged": false,
+  "flowEvaluations": 0,
+  "referenceChord": 1,
+  "elements": [
+    {
+      "name": "Slat",
+      "pointCount": 201,
+      "finite": true,
+      "bounds": {
+        "x": [
+          -0.085382,
+          0.018772
+        ],
+        "y": [
+          -0.115748,
+          0.005079
+        ]
+      },
+      "first": {
+        "x": 0.018772,
+        "y": 0.005079
+      },
+      "second": {
+        "x": 0.018419,
+        "y": 0.004721
+      },
+      "penultimate": {
+        "x": 0.018372,
+        "y": 0.004775
+      },
+      "last": {
+        "x": 0.018772,
+        "y": 0.005079
+      },
+      "signedPolygonAreaWithStraightClosure": -0.002797754339000001,
+      "endpointGap": 0,
+      "firstSurfaceInterval": 0.0005027653528237594,
+      "lastSurfaceInterval": 0.0005024101909794436,
+      "solverAccepted": true,
+      "solverRejection": null
+    },
+    {
+      "name": "Main Element",
+      "pointCount": 221,
+      "finite": true,
+      "bounds": {
+        "x": [
+          0.043807,
+          0.874007
+        ],
+        "y": [
+          -0.054374,
+          0.06186
+        ]
+      },
+      "first": {
+        "x": 0.874007,
+        "y": 0.030943
+      },
+      "second": {
+        "x": 0.872863,
+        "y": 0.030998
+      },
+      "penultimate": {
+        "x": 0.872881,
+        "y": 0.031153
+      },
+      "last": {
+        "x": 0.874007,
+        "y": 0.030943
+      },
+      "signedPolygonAreaWithStraightClosure": -0.065625104529,
+      "endpointGap": 0,
+      "firstSurfaceInterval": 0.0011453213522849488,
+      "lastSurfaceInterval": 0.0011454152085597221,
+      "solverAccepted": true,
+      "solverRejection": null
+    },
+    {
+      "name": "Flap",
+      "pointCount": 242,
+      "finite": true,
+      "bounds": {
+        "x": [
+          0.87151,
+          1.130859
+        ],
+        "y": [
+          -0.145799,
+          0.022094
+        ]
+      },
+      "first": {
+        "x": 1.128307,
+        "y": -0.145799
+      },
+      "second": {
+        "x": 1.127975,
+        "y": -0.145521
+      },
+      "penultimate": {
+        "x": 1.130625,
+        "y": -0.140133
+      },
+      "last": {
+        "x": 1.130859,
+        "y": -0.140497
+      },
+      "signedPolygonAreaWithStraightClosure": -0.008078131707499998,
+      "endpointGap": 0.005884208357969709,
+      "firstSurfaceInterval": 0.00043302193939799354,
+      "lastSurfaceInterval": 0.00043272624140446334,
+      "straightBaseOpeningAngleAtFirstDegrees": 75.76170325596513,
+      "straightBaseOpeningAngleAtLastDegrees": 121.5619685159083,
+      "solverAccepted": false,
+      "solverRejection": "This baseline requires a closed, sharp trailing edge. Blunt/open contours are not supported yet."
+    }
+  ]
+}

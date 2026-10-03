@@ -1,0 +1,260 @@
+{
+  "provenance": {
+    "native": {
+      "executable": "/tmp/open-mses-integral-native-BVmUbQ/xfoil-integral",
+      "sha256": "9af2bf5501d572cea7af8a5c3fa65a88e81b56caa7404b586726f54142271e5a",
+      "provenance": {
+        "compiler": "GNU Fortran (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+        "flags": [
+          "-O2",
+          "-std=legacy",
+          "-fdefault-real-8",
+          "-fallow-argument-mismatch",
+          "-ffunction-sections",
+          "-fdata-sections",
+          "-Wl,--gc-sections"
+        ],
+        "sha256": {
+          "third_party/Xfoil/src/xfoil.f": "d607e1a205ed9a9620589aa52d3a46f07fe4f312bb5c657b8b99d8c6216378e9",
+          "third_party/Xfoil/src/xpanel.f": "5a0467110dd07c0bc59e09dc3d878bed03652b5e5e285bd78c017e9c6fd435eb",
+          "third_party/Xfoil/src/xoper.f": "339c6bfc0eb3aa18cd48cae931850125b85d8e960457e83ec957046c164871bb",
+          "third_party/Xfoil/src/xsolve.f": "a86a8e7bbd185ec6607f27fceb823e53c61685998f4bc415d641532b66a50bfb",
+          "third_party/Xfoil/src/xbl.f": "b87f9e4e31b56071a373861863526fb860eb9fc4964b3d953a4ca989cbef1941",
+          "third_party/Xfoil/src/xblsys.f": "04f15d3e0371982293ecf575a02c7939af1f0071ff5fd7731411dd8f48471cb4",
+          "third_party/Xfoil/src/xgeom.f": "d237678cf3b6d2c7386dfd036fa0338a9212a9de1dd6d6ee1efa64d7698ee3c7",
+          "third_party/Xfoil/src/xutils.f": "a73b6e3fe8f986ab2f70486ae544851900d9cf8c14332870f1e9cbbcae4bd3b9",
+          "third_party/Xfoil/src/spline.f": "03bb98d9cfedc530ea878d314669b153d89dff5273a8e2e33b0c38425c2d358e",
+          "third_party/Xfoil/src/xtcam.f": "7bc66b481630d1aaf6f919414aff994e8aca02d5e5479ea88eccc73774e2f90e",
+          "third_party/Xfoil/src/xgdes.f": "0c55705ea4ecad1ec0d3262f8707763e8c9f7645e327669a3a45e7ec62bbe484",
+          "third_party/Xfoil/src/userio.f": "a239ded06483038284f458a39e955126e465918b1ae43800f3d75d1ef99c92ab",
+          "third_party/Xfoil/src/XBL.INC": "de22d7c5d036ba8c02ab935a9af7671b0c790304226b744231c815648e23ceaa",
+          "third_party/Xfoil/src/BLPAR.INC": "4758e32600e364e0c5d0f60c5fc6bcf479ef47d7a63cdf0d52ab8a5c14d5f850",
+          "scripts/reference/integral.f": "c5790ce7bc95b24fe521b918706713f785a710a14df1cfbeed3a8c8bf28db4ab"
+        },
+        "reusedExecutableSha256": "9af2bf5501d572cea7af8a5c3fa65a88e81b56caa7404b586726f54142271e5a",
+        "reuseNote": "Existing original-Fortran integral oracle; source hashes match the previously generated integral fixture."
+      }
+    },
+    "source": {
+      "path": "docs/solver-reliability/gui-defaults-te-center/flap-terminal-event5-to13/shear-propagation-local-audit.json",
+      "sha256": "e97a2db4ba5b6fce4096fa5c7ee6c92e750849f0d510ed835f143800fbdb810a"
+    },
+    "certificate": {
+      "path": "docs/solver-reliability/gui-defaults-te-center/flap-terminal-event5-to13/shear-propagation-native-audit.json",
+      "sha256": "c1c950f8f06f2c34307777a74a3a5b298ef147f649d097d3ba6f86732b72e6b5"
+    },
+    "scope": "Positive scalar shear roots evaluated in original Fortran at fixed theta/deltaStar/Ue; not complete BL or coupled roots."
+  },
+  "cases": [
+    {
+      "name": "saved-flap-5-turbulent-157",
+      "parameters": {
+        "reynolds": 981851.3664284264,
+        "mach": 0.2,
+        "gamma": 1.4,
+        "ncrit": 9,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 0.08228137269897784,
+          "aux": 0.08765467297939916,
+          "theta": 0.00027887119318977985,
+          "deltaStar": 0.0007600052141704099,
+          "ue": 1.9148895253535658
+        },
+        "downstream": {
+          "s": 0.09803213314198256,
+          "aux": 0.05988308328638246,
+          "theta": 0.0002819458088462666,
+          "deltaStar": 0.0004631503649343951,
+          "ue": 1.9379641063920237
+        },
+        "regime": "turbulent"
+      },
+      "expectedAux": 0.05981520100655284,
+      "expectedResidual": [
+        1.9297714468069493e-15,
+        0.00045422646584491365,
+        -0.00018415597401330277
+      ]
+    },
+    {
+      "name": "saved-flap-5-turbulent-186",
+      "parameters": {
+        "reynolds": 981851.3664284264,
+        "mach": 0.2,
+        "gamma": 1.4,
+        "ncrit": 9,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 1.068820627752635,
+          "aux": 0.04586210407489611,
+          "theta": 0.006012540784021255,
+          "deltaStar": 0.010696913256848845,
+          "ue": 1.1152584345967451
+        },
+        "downstream": {
+          "s": 1.0764161927292815,
+          "aux": 0.04669741397310938,
+          "theta": 0.006396014066551099,
+          "deltaStar": 0.011771859928881481,
+          "ue": 1.0969249139909585
+        },
+        "regime": "turbulent"
+      },
+      "expectedAux": 0.04667704817541485,
+      "expectedResidual": [
+        -5.45332008716759e-15,
+        -0.0012915463481913477,
+        0.0017285119730698585
+      ]
+    },
+    {
+      "name": "saved-flap-6-wake-244",
+      "parameters": {
+        "reynolds": 981851.3664284264,
+        "mach": 0.2,
+        "gamma": 1.4,
+        "ncrit": 9,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 1.00234746963879,
+          "aux": 0.009480656768700751,
+          "theta": 0.005978811872709666,
+          "deltaStar": 0.013187469880507285,
+          "ue": 1.1186421536214073
+        },
+        "downstream": {
+          "s": 1.0112600162974013,
+          "aux": 0.05004134614876137,
+          "theta": 0.005347155405737473,
+          "deltaStar": 0.010130185227071051,
+          "ue": 1.1503669673313883
+        },
+        "regime": "wake"
+      },
+      "expectedAux": 0.009495323054327907,
+      "expectedResidual": [
+        3.93348548177741e-16,
+        0.00016217379727876457,
+        0.005825954721848155
+      ]
+    },
+    {
+      "name": "saved-flap-6-wake-245",
+      "parameters": {
+        "reynolds": 981851.3664284264,
+        "mach": 0.2,
+        "gamma": 1.4,
+        "ncrit": 9,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 1.0112600162974013,
+          "aux": 0.009495323054327907,
+          "theta": 0.005347155405737473,
+          "deltaStar": 0.010130185227071051,
+          "ue": 1.1503669673313883
+        },
+        "downstream": {
+          "s": 1.0227969986624907,
+          "aux": 0.04883433575117745,
+          "theta": 0.004884213290196467,
+          "deltaStar": 0.00837528899787634,
+          "ue": 1.1789830116024846
+        },
+        "regime": "wake"
+      },
+      "expectedAux": 0.009562285614702955,
+      "expectedResidual": [
+        8.057356865043275e-15,
+        0.0015907621231715382,
+        0.008749560932759755
+      ]
+    },
+    {
+      "name": "saved-flap-6-wake-270",
+      "parameters": {
+        "reynolds": 981851.3664284264,
+        "mach": 0.2,
+        "gamma": 1.4,
+        "ncrit": 9,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 1.2957635790385482,
+          "aux": 0.015427855719053342,
+          "theta": 0.008791058638549369,
+          "deltaStar": 0.012860088447372629,
+          "ue": 0.9932240251922392
+        },
+        "downstream": {
+          "s": 1.3040803586796421,
+          "aux": 0.05031151500396362,
+          "theta": 0.00889565591671812,
+          "deltaStar": 0.012969828418452022,
+          "ue": 0.989802243687826
+        },
+        "regime": "wake"
+      },
+      "expectedAux": 0.015552831138838282,
+      "expectedResidual": [
+        4.450134922021065e-15,
+        0.000021417366027644214,
+        0.002394508533875392
+      ]
+    },
+    {
+      "name": "saved-flap-6-wake-294",
+      "parameters": {
+        "reynolds": 981851.3664284264,
+        "mach": 0.2,
+        "gamma": 1.4,
+        "ncrit": 9,
+        "velocityConvention": "physical",
+        "exactJacobian": true,
+        "transitionTolerance": 1e-12
+      },
+      "input": {
+        "upstream": {
+          "s": 4.8765270717088205,
+          "aux": 0.011320102884637534,
+          "theta": 0.008797318105991069,
+          "deltaStar": 0.009150271128254924,
+          "ue": 0.9947873108933599
+        },
+        "downstream": {
+          "s": 5.322454972733088,
+          "aux": 0.014596843236333926,
+          "theta": 0.008796509142912749,
+          "deltaStar": 0.009132020886440871,
+          "ue": 0.9947994152809162
+        },
+        "regime": "wake"
+      },
+      "expectedAux": 0.010693311746365071,
+      "expectedResidual": [
+        -1.6920872255438146e-15,
+        -0.00005546213225586956,
+        0.0003676009272626149
+      ]
+    }
+  ]
+}

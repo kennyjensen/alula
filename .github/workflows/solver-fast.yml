@@ -1,0 +1,95 @@
+name: Solver fast checks
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: solver-fast-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  fast-and-geometry:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        id: install
+        run: |
+          mkdir -p ci-artifacts
+          node --version > ci-artifacts/environment.log
+          npm --version >> ci-artifacts/environment.log
+          git rev-parse HEAD >> ci-artifacts/environment.log
+          npm ci 2>&1 | tee ci-artifacts/npm-ci.log
+      # Historical checkpoint tests remain runnable locally with the ignored docs/ archive.
+      - name: Fast self-contained checks
+        run: |
+          node --test --test-reporter=tap --test-concurrency=1 \
+            tests/airfoil-formats.test.js \
+            tests/flow-model.test.js \
+            tests/benchmark-permissions.test.js \
+            tests/benchmark-airfoils.test.js \
+            tests/rae-status.test.js \
+            tests/source-surface-spacing.test.js \
+            tests/elliptic-convex-sweeps.test.js \
+            tests/solver-error-context.test.js \
+            2>&1 | tee ci-artifacts/fast-tests.log
+      - name: Geometry inventory, including currently guarded cases
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          node scripts/validate-solver-reliability.js \
+            --stage=geometry --tier=all --seconds=15 \
+            --out=ci-artifacts/geometry \
+            2>&1 | tee ci-artifacts/geometry.log
+      - name: Retain logs and geometry receipts even on failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: solver-fast-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-artifacts/
+          if-no-files-found: warn
+          compression-level: 1
+          retention-days: 14
+
+  rae-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Cold RAE default, fine-grid and transonic cases through the app form and worker
+        env:
+          RAE_APP_RECEIPT: test-results/rae64x9-browser.json
+          RAE_FINE_RECEIPT: test-results/rae128-automatic
+          RAE_FINE_SPACING: automatic
+          RAE_FINE_ENDS: auto
+        run: npx playwright test tests/browser/rae-default-startup.spec.js tests/browser/rae-fine-spacing.spec.js tests/browser/rae-transonic-viscous.spec.js --workers=1
+      - name: Retain browser verification
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rae-browser-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/
+          retention-days: 14

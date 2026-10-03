@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "case": "RAE64x11",
+    "checkpoint": "docs/solver-reliability/rae-inviscid-audit/fixtures/rae64x11-combined-wake-before-bl-curvature.json",
+    "sha256": "d0a7395a3101af8a0823c7efa48f0aed2d48f9a4703026144da1fc12528f8b0f",
+    "description": "Extracted from the unchanged combined-wake 64x11 checkpoint; upper turbulent intervals i160/161 restrict the next Newton step while the grid stays convex and no thickness projection is active."
+  },
+  "parameters": {
+    "reynolds": 2689608.213390552,
+    "mach": 0.74,
+    "gamma": 1.4,
+    "ncrit": 4,
+    "velocityConvention": "physical",
+    "exactJacobian": true,
+    "transitionTolerance": 1e-12,
+    "hkFloorLinearization": "native"
+  },
+  "cases": [
+    {
+      "station": {
+        "kind": "surface",
+        "body": 0,
+        "side": "upper",
+        "i": 160,
+        "k": 32,
+        "id": 31,
+        "regime": "turbulent"
+      },
+      "input": {
+        "regime": "turbulent",
+        "upstream": {
+          "s": 0.09795428552003199,
+          "aux": 0.08088191471691222,
+          "theta": 0.00010035449997630434,
+          "deltaStar": 0.0002526142609527073,
+          "ue": 1.4824656070243534
+        },
+        "downstream": {
+          "s": 0.10629764289841508,
+          "aux": 0.07696786018745855,
+          "theta": 0.0001916890118464356,
+          "deltaStar": 0.0003611877849857254,
+          "ue": 1.2083000603284184
+        }
+      },
+      "direction": {
+        "upstream": {
+          "aux": 0.7303105318639735,
+          "theta": 0.0029722408623877833,
+          "deltaStar": 0.00912099046173472,
+          "ue": -20.88268850463487,
+          "s": -0.0007960371667290777
+        },
+        "downstream": {
+          "aux": 1.61907390582304,
+          "theta": 0.013108202504101418,
+          "deltaStar": 0.027305192938722918,
+          "ue": -32.14493567403696,
+          "s": -0.000861699748242815
+        }
+      },
+      "expectedResidual": [
+        -0.0008770029310531816,
+        -0.09481722570160298,
+        0.06261204489166242
+      ]
+    },
+    {
+      "station": {
+        "kind": "surface",
+        "body": 0,
+        "side": "upper",
+        "i": 161,
+        "k": 33,
+        "id": 32,
+        "regime": "turbulent"
+      },
+      "input": {
+        "regime": "turbulent",
+        "upstream": {
+          "s": 0.10629764289841508,
+          "aux": 0.07696786018745855,
+          "theta": 0.0001916890118464356,
+          "deltaStar": 0.0003611877849857254,
+          "ue": 1.2083000603284184
+        },
+        "downstream": {
+          "s": 0.11494176514585007,
+          "aux": 0.041556422428619295,
+          "theta": 0.0002509226674308751,
+          "deltaStar": 0.00042415035289589353,
+          "ue": 1.1477169348839886
+        }
+      },
+      "direction": {
+        "upstream": {
+          "aux": 1.61907390582304,
+          "theta": 0.013108202504101418,
+          "deltaStar": 0.027305192938722918,
+          "ue": -32.14493567403696,
+          "s": -0.000861699748242815
+        },
+        "downstream": {
+          "aux": 0.6549332368823259,
+          "theta": -0.0011429568165386209,
+          "deltaStar": -0.0032190169903805153,
+          "ue": -4.043954646212899,
+          "s": -0.0009296668144029162
+        }
+      },
+      "expectedResidual": [
+        0.0019513081896804989,
+        0.02741880697233047,
+        0.018846146688862888
+      ]
+    }
+  ]
+}

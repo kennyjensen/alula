@@ -1,0 +1,33 @@
+{
+  "source": "Supplied third_party/vibefoil/js",
+  "license": "GPL-2.0-or-later",
+  "upstreamSha256": {
+    "third_party/vibefoil/js/xbl.js": "292883860ebc934a8648bd6519f3809b7d80b6b4805031af9d7a4af51d72141d",
+    "third_party/vibefoil/js/xblsys.js": "7ffd11d0c4e6aaa1869968e999c339f34d80cb930f0885a40f6f69a03245b239",
+    "third_party/vibefoil/js/xpanel.js": "264c5b0d86561b5acc9c714e3d8bc7e0ce74ddcbcc93a1aac763c01b74050559",
+    "third_party/vibefoil/js/xsolve.js": "613b165eb3c1511ebcbc387f28f6006075c500f3c6198f2155977313545140f2",
+    "third_party/vibefoil/js/xfoil.js": "a29b3752a6caea7443a304991927f448ff3586378d89fa2555d6f5105257e021",
+    "third_party/vibefoil/js/xoper.js": "79d7d692741767c22dce03ad6667bc17492366b57fb3887a65ab1456621bcc5f",
+    "third_party/vibefoil/js/spline.js": "f37465040592c20ac6fa4eb6b1a4a3e42413ab030d2ab67f1dd16f93adbbc5f1",
+    "third_party/vibefoil/js/xgeom.js": "98447704643f4bc241fd4c6fd129c2442bcce9424f1ea134fa60774a01ac7d42",
+    "third_party/vibefoil/js/xutils.js": "1e53a966c29cebeb8262427b6c6217348a76572478114c920c91de144bcc6ae5",
+    "third_party/vibefoil/js/arrays.js": "77a8f898257c955916f80abfcfae8ec3ddb0dbbc6c9f3abd1de3b3a621cb23b0"
+  },
+  "changes": [
+    "Removed xutils cache-busting query from module import.",
+    "CFT GRT clamp derivatives now match the supplied third_party/Xfoil/src/xblsys.f (newer than the nested Vibefoil Fortran copy).",
+    "XOPER returns Newton iteration history, supports optional progress/log callbacks and labels RMSBL as an update norm. Removed nonfinite GAM fallback.",
+    "XBL initialization logging is optional via the context.",
+    "Documented original BLDIF turbulent lag Jacobian omission (UQ_RTA), preserving its numerical behavior by default. Optional EXACT_BL_JACOBIAN restores its Reynolds-thickness terms and the explicit US contribution to the freestream-Re partial without changing residual equations.",
+    "In exact-Jacobian mode, correct the original DILW shape-derivative sign. The original dissipation value and default native partials are unchanged; compiled native value differences and retained wake blocks verify the correction.",
+    "Exact-Jacobian mode differentiates the active BLVAR Hk lower limit and the saturated BLDIF upwind exponent. Native values/default derivatives are unchanged; analytic branches replace the coupled extreme-upwind numerical fallback.",
+    "Optional TRANSITION_TOLERANCE resolves the existing TRCHEK2 amplification root more tightly and rejects unresolved requested roots. The default retains the native 5e-5 stopping tolerance. Automatic quad coupling requests 1e-12 to prevent stopping-iteration jumps in local numerical derivatives. A native copy with only DAEPS changed and diagnostic tracing verifies the same equations at the tighter accuracy."
+  ],
+  "modified": "2026-09-11",
+  "attribution": {
+    "xfoil": "Copyright (C) 2000 Mark Drela",
+    "javascriptPort": "Vibefoil, Kenny Jensen (upstream HTML author metadata)"
+  },
+  "licenseFile": "LICENSE",
+  "noticeAuditDate": "2026-10-01"
+}

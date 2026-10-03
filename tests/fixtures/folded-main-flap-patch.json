@@ -1,0 +1,614 @@
+{
+  "provenance": {
+    "source": "Frozen original main/flap grid at 4 degrees, 16 requested wall intervals, seven tubes per group; no flow solution.",
+    "sourceHashes": {
+      "scripts/validation/provenance.js": "0bf8b5ae679dad5ccfad4b4aa06153f8b80bce6a8d7475e042da6aaeb4799ddb",
+      "src/euler/cases.js": "d9d713d38db52cb08edb39921fe183a9f8082a8d26008088df919898c4c6f295",
+      "src/euler/gas.js": "0cec296e846fa5d65f21db04c18c4fbc3fb3f653edcf1cfc89e2eb0fe9ebef6a",
+      "src/euler/incompressible-streamtube-cell.js": "9a060c2435b78b78056490c2b0eda50177e31e6c9ceea20bb6d1a8982187b354",
+      "src/euler/incompressible-streamtube-linearization.js": "bb03187307413881e92e216f8a08f2f3466c2ee8cb21eb55e134a4b18bc68bb0",
+      "src/euler/incompressible-streamtube-patch.js": "409d4f5ee1772d794d5729da5804bfa330f36985e80d9230c5d986f5bb685b9a",
+      "src/euler/jacobian.js": "3f952acb1c95427ecb77a1a49ed1e463a88ab9e6bf92341f070508c007383b26",
+      "src/euler/mesh.js": "947bff4091e320b42bb5bada42733656187a70545b629058aa67e713607005bd",
+      "src/euler/multielement-mesh.js": "91d691a39093cc9693afda02f4e2f87084ff208d330e0ec0f2daf42cc050e29e",
+      "src/euler/pseudo-transient.js": "39da2f33cb6369ed425e1e8210872f6f4e54510db0ef2215786d972ecaf2d581",
+      "src/euler/reconstruction.js": "2a177ef2e571cea09fc5c756465b10d9cd5594975e53da0a5a06c8d1f70af876",
+      "src/euler/residual.js": "4f116df3d00f425ee94eee39955e861e44dbc6055d248e15c95edd81577a7475",
+      "src/euler/solve.js": "87604325ede8e3e605f4f1dc0026d678d4bf3d6403039daa6997118e89110d07",
+      "src/euler/streamline.js": "cb2644fb9c29285a3ba85911eca2b1aad92b7da74a42d7bee1761e6e0bc66221",
+      "src/euler/streamtube-body-initializer.js": "30ecc8807894104faf6b985e11cc29315df410549937be6dee95976a9ea5741d",
+      "src/euler/streamtube-body-jacobian.js": "c1bcc67002cd0d7776cd0c319cc3bba1ec1ce7acc649933f1bf045ecd19fab12",
+      "src/euler/streamtube-body-layout.js": "ee1ff4bc49119bf2da88e946c7249882f1ece927c11b82a9731b1f177f61c56c",
+      "src/euler/streamtube-body-restart.js": "be68078cf34650d3bb57e72906fb108bac85457a80da81ebd11fd71617aa1985",
+      "src/euler/streamtube-body.js": "8f7c10a605dd919789766c0de4d72479b0c7755465be3c64602a3c23d1ef526d",
+      "src/euler/streamtube-cell.js": "16c908348b1f9f29a52e8c1acdf36a7c3aa56210e9a1f42deb59d17fcb08a8f7",
+      "src/euler/streamtube-channel-jacobian.js": "201b9b3b7934f71350e7c227cbb89edc1f1474dce6fa11996a1560f9e628ce94",
+      "src/euler/streamtube-channel.js": "413a9ed79feb1a77e6a9c999b4d42f60e1feccb041a691daed8d480bbcbc860a",
+      "src/euler/streamtube-geometry-linearization.js": "2ab5233c141d03d357b5a4b29b1e72dbbb09e6f07912ecd05f10e640fe42369d",
+      "src/euler/streamtube-initial-state.js": "0d3ed5be7016423ab89ad590a4d33fada118f28c3e9c92edfa4bdd24e81b3b9a",
+      "src/euler/streamtube-linearization.js": "3fa9d66288e99cb12e01211498ccaf36bcbece2c384c436af70783a3586ea53e",
+      "src/euler/streamtube-mesh-preview.js": "ba91c7de391fd2f8f02ae3227d982a11f527a63a804ac94eb9217c4e6eeab519",
+      "src/euler/streamtube-normal-initializer.js": "20b9484b52e5cc940d8d8df94665e67543b593b0f393acfe8bcfc1f513998ba8",
+      "src/euler/streamtube-potential-guides.js": "19065cb0c44bbfb040fc2afb18f66ec598a138c70d10d6ff726c001dce77ea25",
+      "src/euler/triangular-mesh.js": "2dc73183c4d8348d69a750bd0244c98c48c1fbf752c175e6dd9b79a0a7b1c645",
+      "src/geometry/airfoil.js": "13d7446f8c8dde5b70bea807a0fb64d3b0a37b0c151ce3ce34769628fdb9738c",
+      "src/geometry/contour-curve.js": "f7c37a0f0df741ee47ea838dd074ca479b620c34d8d0bc8766153b92bcab62cc",
+      "src/geometry/parse.js": "47c6013f20333c6192a9e1f541834032a89e6e0631c118ff3ee6f4751ada5c8d",
+      "src/geometry/streamtube-crosslines.js": "ccbe9ff7a604db1eb61ee6bd8284b5df789fdab6a224f483f3407c44d3a15f1f",
+      "src/geometry/streamtube-normal-spacing.js": "51e6f72ad1153cfd9427d5edc6aa189965fe95ae5e0369aeef2419a0e5aec6f0",
+      "src/geometry/streamtube-spacing-fit.js": "e16443bd477b47ec7b0dcca75f610795af57cdc04faa5eca5fc91c4aa369ec76",
+      "src/geometry/streamtube-topology.js": "657cdcfe887305b8573c45729ed74c9281387a3fc09409e508de8b9ef9ef3f6e",
+      "src/geometry/vendor/cdt2d.js": "f73a950eeb47c8159a64417bd0176c4047be0ecba9f43d03a6a3d73c2f2c2d29",
+      "src/inviscid/displacement.js": "d39bd6fe2dac4c6aa4b672926796142141631cb279e66b724e002c55ed8e0aa9",
+      "src/inviscid/linear-vortex.js": "b05fc290ebfba44fe959bdb9aa12203db9614b94c73812c510e2cebdc1a66941",
+      "src/inviscid/panel.js": "9432d175bb6a7a909ccbf3aee8fa615cc9b8ab01b388dc4fe396af7f4291dff2",
+      "src/inviscid/potential-curve.js": "ad99634eb9439ebd91731c59d6cdad055003d8f9365510a1fd2f7ab65426c0e3",
+      "src/inviscid/pressure-forces.js": "72baf1616f11ea48634fd12e42af779c82765a7a7485abd5090d81327c1b4bc1",
+      "src/inviscid/streamfunction.js": "4a542c54033537c171f1531caee1e0b8bd2e5e5e7c196f8ec9c7033433d877cc",
+      "src/inviscid/streamlines.js": "58f469b3d3bbab8b8035a9d8aaacfe948b98a7c3270474750276ed6b3a8984b1",
+      "src/numerics/bl-schur.js": "6de936c807cea6ce97a314d54218b6cae2960f2bf756af2bcfdbd3a3e4623a1d",
+      "src/numerics/klu.js": "3ba62b6441f2e1689c8ca50f788f4fb8a45656dcbb372f7f63638d605ecec294",
+      "src/numerics/linear.js": "81ce94275ca0edea72ddfa9dfc26d8f2cde7fb029aa595219e8011391df3cf0a",
+      "src/numerics/newton.js": "a4733bf9bb21420087523a2a23566cf7cf800c98a3d8678f6ae4b5639ebe17c8",
+      "src/numerics/sparse.js": "c4f3f2950e13d1af23d37a449a720043b8a84f6492f40f05b72c993708041f87",
+      "src/numerics/vendor/klu/bridge.c": "b48c4f335c4740d206a744dd92257c71a6da91923151a38f7d791c5630832bbc",
+      "src/numerics/vendor/klu/build.js": "6951a9e2dc006fb608fc82ba8cbd67790794e1e695740292ff5356c6c64b080a",
+      "src/numerics/vendor/klu/klu.wasm": "28b9cedbe67423b7cf7628927e08cb4c296ff4e84fea4bac80c9c3b481895150",
+      "src/numerics/vendor/klu/source/AMD/Include/amd.h": "28628b0c724bd36c05934fbb0006a5513f4cf69e0d196446761143947f7b8bd6",
+      "src/numerics/vendor/klu/source/AMD/Include/amd_internal.h": "892cd914f4f3c0bcf595b22852affd160e0d6b2abfced3536dbb3fafd64f89da",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_1.c": "42d0b4962d6dece4a2f7a3d0bf1ae0b05dd142f097bfd105720323b1108ab14d",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_2.c": "60a0f293bdec6bcf6988e03641ff8cc34e4d3ea33dc589f3551dd04550c0ca86",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_aat.c": "07207cc6f723c3bea86b766f37807d3b436e28c8cbdca147b937c5f7dd786eab",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_control.c": "775bdc19e0997230447732a44a8209703b2bf4a26bf3f73dcc072e67f4d4615c",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_defaults.c": "6010ee9cabe18a0437bacf4e0ff32b77d72cae9678dbca73cd31f27b1b1c522a",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_dump.c": "85215ca792ebee328574302e585b111c7ea54ab9727888b897d7f37a3cdeb05c",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_global.c": "2bfdaa5aaebbd7102e4fc9ae3cb9eb743995bff4fa52570de42cde60dd2900f9",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_info.c": "a27c00192936b87a0b50e202eb8982b70f4077d0116bda347e5a6bdc8f83113e",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_order.c": "d0dbcaf7538b292e33a79b2cbc1dc84897e7bef62ab396c7a3a78437b44a3334",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_post_tree.c": "f97d516d22e20ea6e81d3a1a4dfd04f8ad38a5e434657620a1b2ff89c34ebb87",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_postorder.c": "49e2ec4776e8638a07c3504fcafac8b28cf4b6773d80ffe198f0976ce14e93d6",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_preprocess.c": "e7022d7a1ff673e8d7e0c8325a916f1c8205653e9b1b8ecc79112c27bf44ff75",
+      "src/numerics/vendor/klu/source/AMD/Source/amd_valid.c": "45bb926b9fbdffd3bf6712d48be030c3fad160d58cf15b25fc63f4b8806a739c",
+      "src/numerics/vendor/klu/source/BTF/Include/btf.h": "5443a46c22a5253472aaa416f39c4a9c6f0f760fed11253d8a11c89c15fe5403",
+      "src/numerics/vendor/klu/source/BTF/Include/btf_internal.h": "a0ff39eb76b507f76f38affae0d40e885b2cf39e65838bbeb5776457ec0792fd",
+      "src/numerics/vendor/klu/source/BTF/Source/btf_maxtrans.c": "bb0d0f1a34f365a049f4056614131c86724e31914591979fc7cd005935fea3a8",
+      "src/numerics/vendor/klu/source/BTF/Source/btf_order.c": "8e1c0e7b2dac1d442fb2fc781200fad943fab43a3711f513e918394b0fa31d70",
+      "src/numerics/vendor/klu/source/BTF/Source/btf_strongcomp.c": "d79b06ae5e0fecabcf13397423055d7d391580b74c0134836f5a6892e4561263",
+      "src/numerics/vendor/klu/source/COLAMD/Include/colamd.h": "de5f13dca773b65fdbefbe56790538d523e8ec86ff9d8fd6c8e6e3ac1d6d3fb4",
+      "src/numerics/vendor/klu/source/COLAMD/Source/colamd.c": "f82d2b2a17d8cffcaf36b8042a4906fadb5ac098c801c8e498434f235ec026e8",
+      "src/numerics/vendor/klu/source/KLU/Include/klu.h": "26c6483a09338fab6c2ac346f0850770e4c60c9667fa6a648ffa3cef29540422",
+      "src/numerics/vendor/klu/source/KLU/Include/klu_internal.h": "2ec7b3ef0826917efbeae04bbc399adfa233ee276143f769210c330ec677ad58",
+      "src/numerics/vendor/klu/source/KLU/Include/klu_version.h": "37e7d518ac0db538ba31e248247f63d54a023a52b1173a433a21d97dbaf02bf3",
+      "src/numerics/vendor/klu/source/KLU/Source/klu.c": "22e65f3ec2284098ded99a77cc0d76c5c74397312c3fd5396e79ffea77d96491",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_analyze.c": "4851931c62d36464c0eb0c44c42c56c221967e852ff13a2182bb3e3fc7d17269",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_analyze_given.c": "0196d9b75ecb89567ac9d0c06ab72ab9ab1bd0a375dbdac9c4dbda90e09950af",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_defaults.c": "68c03e8253edaa1cdd797d0b41ea677ecb24597c5dc56245879fba2113702a5c",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_diagnostics.c": "e2f0d9ee357264097d8888984716c3653df6c1a2a9c7f16144d68da99d23f622",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_dump.c": "90a24167f3b7188b4cb8619d70453dcdfaad623bb1c7e61c5e9aa736f46c0673",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_extract.c": "4783b49b9b0f53b6e9c84d8bb7477a0004c30a54af27f5974d5bfe594f847952",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_factor.c": "b6245667156eb796335f04b52c2bf2c864c39b8cb4eb7d08b1e4abc093ce8a5e",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_free_numeric.c": "692ef49584ddc21330a7b624132e11a758453bd48c427bea69934f0427dfa43f",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_free_symbolic.c": "aee407508ba79603e90986bc7e3b76364d0b252fc0e75c70b2a382cd07c32279",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_kernel.c": "2d105c34d8a6e15ca9bbb0d0d6c6e82e239184e0c41d7dd05342438aedaa287a",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_memory.c": "5f9b7bea70c914278638bc0f39efed4418d30e15d04640633d42fa9c1fd5f77f",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_refactor.c": "c80858d0ad5b25510b7b3feb980b3078ac918bbf99677730cc89c1f1344c2d26",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_scale.c": "01d4c0574ff18677baf6dc429ea7d497a69b4546189834afa45afefc3d06f038",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_solve.c": "e091c29b207091e147dbfef4146bc9472642d9e61359896f127aa7749a1870f4",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_sort.c": "2f28d0a04cce058dd383ed1cf62b3ee06100d7970c3505c0c9c616557e36206a",
+      "src/numerics/vendor/klu/source/KLU/Source/klu_tsolve.c": "e7ef1b22b4203c44b1bcfe8799fc26afdac9664ce54f892f8200cb54a3bdb95d",
+      "src/numerics/vendor/klu/source/SuiteSparse_config/SuiteSparse_config.c": "a1f590ce407402c51374b8837e53762e41d0174b64f9384af3736c9670155226",
+      "src/numerics/vendor/klu/source/SuiteSparse_config/SuiteSparse_config.h": "8260a219cbd8a774e24d4fff89fb539efb2c955a0fe67c8fee159489bb853102",
+      "src/numerics/vendor/klu/source/SuiteSparse_config/xerbla/xerbla.c": "50f41a3f7719812a215c4a9182e26a29896278a0c6e97ba687e651022285e741",
+      "src/numerics/vendor/klu/source/SuiteSparse_config/xerbla/xerbla.h": "fc9615566b30acb61d548da1237c68e026ee2a2c51abaaa78e5b07dbe8771555",
+      "src/potential/airfoil.js": "70a6a9aa0c0bb335960e16479d4af3a0f86f897d68fa55c8b4556696a31d2a1c",
+      "src/potential/coupled.js": "25098c47a5b6037db8ec2833b65a3acb65f20224df9808455f106f6c332b1e3d",
+      "src/potential/edge-sampling.js": "eb9e3641d750c4dd4029e8ef295f5328bde0584bcf0d5c7eebb2053416f39884",
+      "src/potential/farfield-geometry.js": "e461ac7b21bf69cb004c774a0a584bd8116a932280c84a6c053b3e59422beeb1",
+      "src/potential/farfield.js": "761ae4d340ef42949382a05622d70807533c4ebabe64be87b7989e42085ad220",
+      "src/potential/interfaces.js": "f777ff4a673da1f46f5fb4343b40d4c11c319086b3136ff19ea9f383a0cc6bf0",
+      "src/potential/isentropic.js": "0c253d77ff923847e50fbb7cfd311d006b2d2f50968bea5facf22d9650450a14",
+      "src/potential/linear.js": "02c412a88026255470530a0690ef02f0a70f988b443dde66e86ccac65d54a13e",
+      "src/potential/mesh-preview.js": "f0a748a12e7831549f719c44661b15b3279290ee170938ecc484d02ba7081633",
+      "src/potential/reconstruction.js": "3908726e95a10bfd5de80e07315fec3ed22f09a5e7b6e4104ad4c71e14ddeec3",
+      "src/potential/result.js": "e6e42ce4ffa5f71c1badf7d3f91b5236d2e46cf4080b76dd470c5d85b6f2a68b",
+      "src/potential/system.js": "29af5398d8cb85c70cb6827f8547726c372b79596ebb027d81767af29e2b4813",
+      "src/viscous/active-newton.js": "dde28ebd57a30ff775673f1be35a36333e2bfea4fcd404bd7c2f674f030a48cf",
+      "src/viscous/assembly.js": "f200f20c24e67640d3df50535bdc861ad31751e61adb66b79b09bdd95be1b2bb",
+      "src/viscous/context.js": "849fb982338cc9ee4e69c67c5304209cae0e24247355e15348ed935698e84d9b",
+      "src/viscous/integral.js": "4a20897eef40b305b0c8b3fcdd4f594c209adbd1913383ec7f1eb0f3eb28922d",
+      "src/viscous/interval.js": "f8e641fe16dab4a47feb5eb04ef30205a582f994004bbfe99c1f34230064b5e6",
+      "src/viscous/mass-interpolation.js": "e1e70b094ae1a9ab68a024e065a1f12b0a626a10c359b29148239bb4758faa61",
+      "src/viscous/mass.js": "dc847714898159f6eac0d19fe879995705f0bc0c98712c65ad8276e2473dddf0",
+      "src/viscous/multielement.js": "b9bcd2135f96378fe6b226cbd1a65cbba06b2e4da3a7ce1af5ede451480bdc55",
+      "src/viscous/observables.js": "dcfa6d60abab7b94995a150be080a6f091f17ed3fbc9d2db793875c787d65bf5",
+      "src/viscous/result.js": "8cd16306e8ec0363b0b9fcbb699da0e4f1d409adbb93a9c336ed6cfa1a820768",
+      "src/viscous/seed.js": "8cc27ccbf0f205056d9a280eb03d7390c2686e438e5a7f25a2cda64c9584d5f6",
+      "src/viscous/solve.js": "ba844fe4bf96c30031dfce07c06f553dfa51e3a4a8e86b1b874da602558821a7",
+      "src/viscous/trips.js": "1a3d85a035c86791482ec33c842405818ec2391f4d0c208f4572f291ba762178",
+      "src/viscous/wake-drag.js": "2aa5059afbde05806f745feb340e74bc79f2cae4c49d3b4b1891fd95b7c175dd",
+      "src/viscous/xfoil/arrays.js": "b58f97588b3769bce91e62564d2d5d96151bd41920d30f87e35668ca010046a6",
+      "src/viscous/xfoil/spline.js": "f5c98211b77a8951222a90859e136a0a163f2f4b2e927d94a09962f568ffed24",
+      "src/viscous/xfoil/xbl.js": "72961951cc15895686b8ae7b48671f703e17e557984910e13709533db949d016",
+      "src/viscous/xfoil/xblsys.js": "39fc70a983e60c4bc6ca1921f049e0f9e6113eef0ddf64d10ff05b634f65a6c5",
+      "src/viscous/xfoil/xfoil.js": "92ce5f64d5938aacfe80df97c7b45c057da05b52cbb79e17d78789b005883195",
+      "src/viscous/xfoil/xgeom.js": "d8875d4e472e31f5d570f0f057363b5b1cf294c267bd41a68de892bc3fcc1c9e",
+      "src/viscous/xfoil/xoper.js": "a8cbea2e578f8489042c642654f3282fbc3d4c455877ea9d6257975c902ef2e6",
+      "src/viscous/xfoil/xpanel.js": "a4d868dc054f209473fb6ee3245aabd3f5db948223030a698c9e989344f802eb",
+      "src/viscous/xfoil/xsolve.js": "2673730c716764d7046ccb124787e1d1900ce0095c4929fc755bef55d99db610",
+      "src/viscous/xfoil/xutils.js": "fa8c523a1cc312872b404062850905d232ceca8e386cf3795015a35ab074287b"
+    },
+    "changedSourcesDuringCapture": [],
+    "initializationControls": {
+      "crosslinePlacement": "potential",
+      "outerCrosslineSpread": 0.15,
+      "normalSpacing": "stagnation"
+    },
+    "globalCellIndices": [
+      1379,
+      1380,
+      1386,
+      1387,
+      1393,
+      1394,
+      1400,
+      1401,
+      1402,
+      1407,
+      1408,
+      1409,
+      1414,
+      1415,
+      1416,
+      1421,
+      1422,
+      1428,
+      1429,
+      1430,
+      1436,
+      1437,
+      1458,
+      1459,
+      1465,
+      1466,
+      1472,
+      1473
+    ],
+    "construction": {
+      "elements": [
+        {
+          "naca": "2412",
+          "panels": 160
+        },
+        {
+          "naca": "0012",
+          "panels": 160,
+          "transform": {
+            "chord": 0.3,
+            "x": 0.94,
+            "y": -0.08,
+            "angle": -15
+          }
+        }
+      ],
+      "alpha": 4,
+      "topology": {
+        "surfaceIntervals": 16,
+        "tubes": 7,
+        "tubeGrowth": 3,
+        "padding": 4,
+        "height": 2
+      },
+      "initialization": {
+        "crosslinePlacement": "potential",
+        "outerCrosslineSpread": 0.15,
+        "normalSpacing": "stagnation"
+      },
+      "flowModel": "incompressible",
+      "mach": 0
+    },
+    "reduction": "Retain every cell incident to the 11 moved vertices in the initial full-grid repair; freeze every other patch vertex. The 28 cells contain all nine original invalid cells."
+  },
+  "vertices": [
+    {
+      "x": 0.9470612361213662,
+      "y": -0.09454133121690764
+    },
+    {
+      "x": 0.9488765594609033,
+      "y": -0.09231532023848196
+    },
+    {
+      "x": 0.9425998451065022,
+      "y": -0.09694809214239006
+    },
+    {
+      "x": 0.9265799577007943,
+      "y": -0.10187260721743817
+    },
+    {
+      "x": 0.9429691696903494,
+      "y": -0.0964661366672063
+    },
+    {
+      "x": 0.9268048958292747,
+      "y": -0.10172239063017992
+    },
+    {
+      "x": 0.9465483332033998,
+      "y": -0.09060663425339993
+    },
+    {
+      "x": 0.9433925803402657,
+      "y": -0.0958502344425996
+    },
+    {
+      "x": 0.9270645245874207,
+      "y": -0.10154674818013922
+    },
+    {
+      "x": 0.9439133076026416,
+      "y": -0.08834326636106603
+    },
+    {
+      "x": 0.9443889668678156,
+      "y": -0.09183923608513545
+    },
+    {
+      "x": 0.9282727282398907,
+      "y": -0.10069460948406174
+    },
+    {
+      "x": 0.8845607230493228,
+      "y": -0.10017708156755818
+    },
+    {
+      "x": 0.9409933000804555,
+      "y": -0.08484073593434067
+    },
+    {
+      "x": 0.9411157329998395,
+      "y": -0.08589259324995314
+    },
+    {
+      "x": 0.9323116201013815,
+      "y": -0.09724659376933487
+    },
+    {
+      "x": 0.8879278311439044,
+      "y": -0.09916647687566275
+    },
+    {
+      "x": 0.9401081172460148,
+      "y": -0.08292643374505479
+    },
+    {
+      "x": 0.9400542379846956,
+      "y": -0.0836052318898218
+    },
+    {
+      "x": 0.9353198751494018,
+      "y": -0.09332332368219208
+    },
+    {
+      "x": 0.8909041202957261,
+      "y": -0.09822018845711292
+    },
+    {
+      "x": 0.9400126479684303,
+      "y": -0.08258751881500284
+    },
+    {
+      "x": 0.9399344389682593,
+      "y": -0.08322356002087632
+    },
+    {
+      "x": 0.9357925339729973,
+      "y": -0.0924111230895084
+    },
+    {
+      "x": 0.8915264396771836,
+      "y": -0.09801547549811272
+    },
+    {
+      "x": 0.9398465539189704,
+      "y": -0.08152577115605072
+    },
+    {
+      "x": 0.939698258358098,
+      "y": -0.08204623089693755
+    },
+    {
+      "x": 0.9368523916696534,
+      "y": -0.08928519305056966
+    },
+    {
+      "x": 0.8936853379624902,
+      "y": -0.09728549923345856
+    },
+    {
+      "x": 0.9408587171223723,
+      "y": -0.07828013558008601
+    },
+    {
+      "x": 0.9404982113379745,
+      "y": -0.07857317402735897
+    },
+    {
+      "x": 0.937858927286749,
+      "y": -0.08124760883239035
+    },
+    {
+      "x": 0.9027780461471014,
+      "y": -0.09380932406980047
+    },
+    {
+      "x": 0.9423413410276475,
+      "y": -0.07672642164225664
+    },
+    {
+      "x": 0.9393011710505978,
+      "y": -0.07794452521158977
+    },
+    {
+      "x": 0.9100752305961095,
+      "y": -0.09038382369116335
+    },
+    {
+      "x": 0.9433054804972173,
+      "y": -0.07462473315274001
+    },
+    {
+      "x": 0.9212277159930734,
+      "y": -0.08331760409268503
+    },
+    {
+      "x": 0.8380116109026066,
+      "y": -0.07561827520781889
+    },
+    {
+      "x": 0.9445083052906666,
+      "y": -0.07406802161372641
+    },
+    {
+      "x": 0.9235479322097636,
+      "y": -0.08145568018981719
+    },
+    {
+      "x": 0.8407433318917048,
+      "y": -0.07517976744793553
+    },
+    {
+      "x": 0.9478282736388564,
+      "y": -0.07297721771910685
+    },
+    {
+      "x": 0.9285648248095312,
+      "y": -0.07703066105835582
+    },
+    {
+      "x": 0.8476142835293631,
+      "y": -0.07402266297735159
+    },
+    {
+      "x": 0.9618301188639857,
+      "y": -0.07155750648258603
+    },
+    {
+      "x": 0.942417538697641,
+      "y": -0.0676170136073609
+    },
+    {
+      "x": 0.871294596386448,
+      "y": -0.06930061280509782
+    }
+  ],
+  "cells": [
+    [
+      0,
+      1,
+      4,
+      2
+    ],
+    [
+      2,
+      4,
+      5,
+      3
+    ],
+    [
+      1,
+      6,
+      7,
+      4
+    ],
+    [
+      4,
+      7,
+      8,
+      5
+    ],
+    [
+      6,
+      9,
+      10,
+      7
+    ],
+    [
+      7,
+      10,
+      11,
+      8
+    ],
+    [
+      9,
+      13,
+      14,
+      10
+    ],
+    [
+      10,
+      14,
+      15,
+      11
+    ],
+    [
+      11,
+      15,
+      16,
+      12
+    ],
+    [
+      13,
+      17,
+      18,
+      14
+    ],
+    [
+      14,
+      18,
+      19,
+      15
+    ],
+    [
+      15,
+      19,
+      20,
+      16
+    ],
+    [
+      17,
+      21,
+      22,
+      18
+    ],
+    [
+      18,
+      22,
+      23,
+      19
+    ],
+    [
+      19,
+      23,
+      24,
+      20
+    ],
+    [
+      21,
+      25,
+      26,
+      22
+    ],
+    [
+      22,
+      26,
+      27,
+      23
+    ],
+    [
+      25,
+      29,
+      30,
+      26
+    ],
+    [
+      26,
+      30,
+      31,
+      27
+    ],
+    [
+      27,
+      31,
+      32,
+      28
+    ],
+    [
+      30,
+      33,
+      34,
+      31
+    ],
+    [
+      31,
+      34,
+      35,
+      32
+    ],
+    [
+      36,
+      39,
+      40,
+      37
+    ],
+    [
+      37,
+      40,
+      41,
+      38
+    ],
+    [
+      39,
+      42,
+      43,
+      40
+    ],
+    [
+      40,
+      43,
+      44,
+      41
+    ],
+    [
+      42,
+      45,
+      46,
+      43
+    ],
+    [
+      43,
+      46,
+      47,
+      44
+    ]
+  ],
+  "fixed": [
+    0,
+    1,
+    2,
+    3,
+    5,
+    6,
+    8,
+    9,
+    11,
+    12,
+    13,
+    16,
+    17,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    27,
+    28,
+    29,
+    30,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    41,
+    42,
+    44,
+    45,
+    46,
+    47
+  ]
+}

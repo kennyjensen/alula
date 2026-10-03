@@ -1,0 +1,156 @@
+{
+  "entry": "cdt2d",
+  "packages": [
+    {
+      "name": "binary-search-bounds",
+      "version": "2.0.5",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "git://github.com/mikolalysenko/binary-search-bounds.git"
+      },
+      "files": [
+        {
+          "path": "search-bounds.js",
+          "sha256": "cb3eda6743b9c9d84dc5de319f75e683f6562d167bcaac56f02fb729249d3f06"
+        }
+      ]
+    },
+    {
+      "name": "cdt2d",
+      "version": "1.0.0",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/mikolalysenko/cdt2d.git"
+      },
+      "files": [
+        {
+          "path": "lib/monotone.js",
+          "sha256": "cab9d1693dc296711d06beddc5c05c8a17e9ff08ce6f44fdeaf847ff2a22d398"
+        },
+        {
+          "path": "lib/triangulation.js",
+          "sha256": "739e30b7418dcbf77b0d479e858e71b045a35b141b5cb636de95ab694e3f7c71"
+        },
+        {
+          "path": "lib/delaunay.js",
+          "sha256": "c3f0a24fae81beae132e6c48d384ffe764d55147499733dc417b2a6ff8a808cc"
+        },
+        {
+          "path": "lib/filter.js",
+          "sha256": "3f97bbc35b9fc04af4ce3f53bc23b0c763198791d4436c05bc2a1de24fe1d852"
+        },
+        {
+          "path": "cdt2d.js",
+          "sha256": "8faeb13c36baf633979b959a77ea8edb3a45700ec83d1147713b6525c38da6ee"
+        }
+      ]
+    },
+    {
+      "name": "robust-in-sphere",
+      "version": "1.2.1",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "git://github.com/mikolalysenko/robust-in-sphere.git"
+      },
+      "files": [
+        {
+          "path": "in-sphere.js",
+          "sha256": "99d2654eb823b15ac4b3bcf9d8b1b76f80d6d3f5fd04f753b1ca0684b6b4cf2a"
+        }
+      ]
+    },
+    {
+      "name": "robust-orientation",
+      "version": "1.2.1",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "git://github.com/mikolalysenko/robust-orientation.git"
+      },
+      "files": [
+        {
+          "path": "orientation.js",
+          "sha256": "4c2622f85ee575695dc7b6e56e5216e7cb9a8c8cec4856a5733ef58a5498717b"
+        }
+      ]
+    },
+    {
+      "name": "robust-scale",
+      "version": "1.0.2",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "git://github.com/mikolalysenko/robust-scale.git"
+      },
+      "files": [
+        {
+          "path": "robust-scale.js",
+          "sha256": "91cfd14bef6c15b87d1e5d1e074d8ccb7d449474fe665af79761a39bc6800f9c"
+        }
+      ]
+    },
+    {
+      "name": "robust-subtract",
+      "version": "1.0.0",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "git://github.com/mikolalysenko/robust-subtract.git"
+      },
+      "files": [
+        {
+          "path": "robust-diff.js",
+          "sha256": "0a65cce47af42fc63e2ca3beb2c67b347eb96bb465c2bb10a3331b9080a4641c"
+        }
+      ]
+    },
+    {
+      "name": "robust-sum",
+      "version": "1.0.0",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "git://github.com/mikolalysenko/robust-sum.git"
+      },
+      "files": [
+        {
+          "path": "robust-sum.js",
+          "sha256": "f70db61a24b458a338847fd71ab57a29a843655ec59ec34052967b048772c0b0"
+        }
+      ]
+    },
+    {
+      "name": "two-product",
+      "version": "1.0.2",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "git://github.com/mikolalysenko/two-product.git"
+      },
+      "files": [
+        {
+          "path": "two-product.js",
+          "sha256": "828936d6ae3d36b19736d0ea3f310859a521ce03bc950e29a43fabb34930f3b1"
+        }
+      ]
+    },
+    {
+      "name": "two-sum",
+      "version": "1.0.0",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "git://github.com/mikolalysenko/two-sum.git"
+      },
+      "files": [
+        {
+          "path": "two-sum.js",
+          "sha256": "48fdf69736b2e190bee39eead8353627a28563aa850d2dd6fb04179c4c8e611a"
+        }
+      ]
+    }
+  ]
+}

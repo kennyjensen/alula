@@ -1,0 +1,144 @@
+{
+  "title": "Newton solution of steady two-dimensional transonic flow",
+  "author": "Michael B. Giles",
+  "year": 1985,
+  "report": "MIT Gas Turbine Laboratory report 186",
+  "repository": "https://hdl.handle.net/1721.1/15250",
+  "metadataUrl": "https://dspace.mit.edu/server/api/core/items/71c92330-3271-4c70-ba4d-42bad19b3519",
+  "pdfUrl": "https://dspace.mit.edu/server/api/core/bitstreams/24779c2e-66a8-48f9-8207-53ab301c004f/content",
+  "pdfSha256": "1cbca409cd9bdf56418e52a1711d64d260348ae619a2c86070a26e10c3f107ce",
+  "pdfPages": 287,
+  "inspectedInitializerPrintedPages": [
+    171,
+    189
+  ],
+  "rightsCheckedAt": "2026-09-07T12:38:13.936Z",
+  "rightsSummary": "MIT identifies the thesis as copyrighted and requires written permission for reproduction or distribution. A permissive source-code license was not found.",
+  "permissionInformation": "https://dspace.mit.edu/handle/1721.1/7582",
+  "originalCodeTranscribed": false,
+  "inspectedSplineHelperPrintedPages": [
+    278,
+    279
+  ],
+  "originalCodeExecuted": false,
+  "containsThesisPdf": false,
+  "solverAuditDate": "2026-09-09",
+  "inspectedSolverPrintedPages": [
+    71,
+    72,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    190,
+    191,
+    196,
+    197,
+    260,
+    261,
+    262,
+    263,
+    264,
+    280,
+    281,
+    282,
+    283,
+    284,
+    285,
+    286,
+    287
+  ],
+  "solverAudit": "../../docs/ISES_NEWTON_COMPARISON.md",
+  "targetedBoundaryFollowup": {
+    "date": "2026-09-09",
+    "printedPages": [
+      210,
+      215,
+      216,
+      217,
+      218,
+      219,
+      220,
+      222,
+      223,
+      265
+    ],
+    "scope": "Partial SETUP/SETBC and geometry-update readings following the frozen leading-edge failure audit. Complete boundary/global-equation parity and contour-update ordering remain unverified.",
+    "evidence": "../../docs/default-euler-ises-leading-update.json"
+  },
+  "coupledWakeMotionAudit": {
+    "date": "2026-09-09",
+    "printedPages": [
+      196,
+      197,
+      218,
+      219,
+      220,
+      221,
+      222,
+      263,
+      267
+    ],
+    "scope": "NCALC on current physical banks; UPDATE/NEWDIS displaced material wall; SETBC pressure and gap conditions. Corrected bare-TE normal chart. Independent-bank versus reduced-centerline equivalence remains unproven. No original code executed.",
+    "evidence": "../../docs/COUPLED_WAKE_MOTION.md"
+  },
+  "independentWakeBankAudit": {
+    "date": "2026-09-09",
+    "printedPages": [
+      196,
+      197,
+      220,
+      221,
+      264,
+      267
+    ],
+    "scope": "Independent physical bank motion and exact nonlinear normal-gap derivative reconstructed; active SETBC approximate increment coefficients are not copied as exact nonlinear parity. Page 264 SMOVE trigger reinspected. Controlled and default coupled equation roots verified; final default LE quad and physical accuracy remain open. No original code executed.",
+    "evidence": "../../docs/INDEPENDENT_WAKE_BANKS.md"
+  },
+  "stagnationCutAudit": {
+    "date": "2026-09-09",
+    "printedPages": [
+      196,
+      197,
+      218,
+      219,
+      220,
+      221,
+      222,
+      223,
+      224,
+      262,
+      263
+    ],
+    "scope": "Reinspected inlet tangential update and normal directions; no new mismatch in the inspected operations. Complete boundary/global-equation parity remains unproven. Same-root redistribution and conservative restart retain the flap LE defect; paired stagnation refinement exposes a first-wake-volume crossing before maintenance. No original code executed.",
+    "evidence": "../../docs/COUPLED_STAGNATION_CUT_AUDIT.md"
+  },
+  "wakeArcInitializationAudit": {
+    "date": "2026-09-09",
+    "printedPages": [
+      193,
+      194,
+      195,
+      226,
+      227,
+      228,
+      265,
+      266,
+      267
+    ],
+    "scope": "INIT assigns wake XI from initialized blade length and supplied wake-length fractions; NEWDIS displaces material walls through TE. Current physical wake-arc convention is not proven equivalent; no wake-coordinate equation changed. Physical streamfunction refinement is our reconstruction, not ISES/MSES listing parity. No original code executed.",
+    "evidence": "../../docs/COUPLED_POSITIVE_REFINEMENT.md"
+  },
+  "pressureCorrectionAudit": {
+    "date": "2026-09-11",
+    "printedPages": [
+      207,
+      209,
+      210
+    ],
+    "scope": "Visual reinspection confirms full node-to-node vectors, signed curvature cross products, side/section averages, and the active auxiliary pressure coefficient used by the current cell. Does not establish complete ISES/MSES equivalence. No original code executed or redistributed.",
+    "evidence": "../../docs/COUPLED_LOCAL_PRECISION.md"
+  }
+}
