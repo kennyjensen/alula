@@ -201,9 +201,12 @@ dialog{background:#141e26;border:1px solid #3f545d;border-radius:12px;color:var(
   .github-star-desktop { display: none; }
   .github-star-mobile { display: flex; margin: 12px 0 0 13px; }
 }
-@media (max-width: 380px) {
+@media (max-width: 414px) {
   .tabbed-workspace .topbar { gap: 6px; padding: 0 8px; }
   .brand-lockup { gap: 6px; }
   .brand-lockup .brand { font-size: 24px; }
   .brand-lockup .brand img { display: none; }
+  .brand-subtitle { line-height: 1.2; }
+  .related-apps { gap: 3px; }
+  .element-link { width: 40px; height: 40px; }
 }
