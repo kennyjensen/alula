@@ -3,7 +3,7 @@ import { cp, mkdir, rm } from 'node:fs/promises';
 import { sep } from 'node:path';
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
-for (const path of ['index.html', 'euler.html', 'src', 'public', 'CNAME', 'LICENSE', 'NOTICE.md', 'third_party/ises', 'third_party/grape', 'third_party/klu', 'third_party/cdt2d']) {
+for (const path of ['index.html', 'euler.html', 'robots.txt', 'sitemap.xml', 'src', 'public', 'CNAME', 'LICENSE', 'NOTICE.md', 'third_party/ises', 'third_party/grape', 'third_party/klu', 'third_party/cdt2d']) {
   await cp(path, `dist/${path}`, {
     recursive: true,
     ...(path === 'src' ? { filter: source => !source.split(sep).includes('tests') } : {}),

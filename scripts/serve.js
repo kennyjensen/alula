@@ -5,7 +5,8 @@ import { resolve, extname, sep } from 'node:path';
 const root = resolve(process.env.SERVE_DIR || '.');
 const port = Number(process.env.PORT || 5173);
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.wasm': 'application/wasm', '.md': 'text/plain', '.pdf': 'application/pdf' };
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.wasm': 'application/wasm',
+  '.md': 'text/plain', '.txt': 'text/plain', '.xml': 'application/xml', '.pdf': 'application/pdf' };
 const server = createServer(async (request, response) => {
   try {
     const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);

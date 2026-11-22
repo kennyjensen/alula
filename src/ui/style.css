@@ -187,6 +187,8 @@ dialog{background:#141e26;border:1px solid #3f545d;border-radius:12px;color:var(
 .element-name { font-size: 8px; line-height: 1.2; color: #b9cdd1; }
 .element-link:hover { background: #203438; border-color: var(--accent); text-decoration: none; }
 .element-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.solver-about { max-width: 72ch; margin: 20px 0 0; color: #9aadb9; font-size: 12px; line-height: 1.6; }
+.solver-about p { margin: 0 0 8px; }
 @media (max-width: 960px) {
   .brand-subtitle > span { white-space: normal; }
 }

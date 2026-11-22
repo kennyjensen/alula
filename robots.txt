@@ -1,0 +1,3 @@
+User-agent: *
+Disallow:
+Sitemap: https://alula.vibefoil.com/sitemap.xml

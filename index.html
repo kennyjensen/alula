@@ -12,8 +12,14 @@
   </script>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0c1117">
-  <meta name="description" content="An open-source browser workbench for multielement airfoil solver development.">
-  <title>alula · Airfoil workbench</title>
+  <title>Alula | Multi-Element Airfoil Solver for Transonic Flow</title>
+  <meta name="description" content="Analyze multi-element airfoils in your browser with Alula, an open-source transonic solver inspired by MSES that uses XFOIL-derived boundary-layer routines.">
+  <link rel="canonical" href="https://alula.vibefoil.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Alula">
+  <meta property="og:title" content="Alula | Multi-Element Airfoil Solver for Transonic Flow">
+  <meta property="og:description" content="Analyze multi-element airfoils in your browser with Alula, an open-source transonic solver inspired by MSES that uses XFOIL-derived boundary-layer routines.">
+  <meta property="og:url" content="https://alula.vibefoil.com/">
   <link rel="icon" href="public/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="src/ui/style.css">
 </head>
@@ -155,6 +161,10 @@
         </div>
           </div>
         </section>
+      <footer class="solver-about">
+        <p>Alula analyzes single and multi-element airfoils, including slats and flaps. Its transonic solver couples Euler flow with integral boundary layers and plots Mach contours and surface pressure.</p>
+        <p>The solver is inspired by <a href="https://web.mit.edu/drela/Public/web/mses/">MSES</a>. Its wake initialization draws on the <a href="https://web.mit.edu/drela/Public/web/mises/">MISES</a> manual, and its boundary-layer routines are derived from <a href="https://web.mit.edu/drela/Public/web/xfoil/">XFOIL</a> through Vibefoil.</p>
+      </footer>
     </main>
   </div>
   <script type="module" src="src/ui/app.js"></script>
