@@ -3,6 +3,11 @@
 alula is licensed GPL-2.0-or-later; this does not replace upstream licenses.
 See [../NOTICE.md](../NOTICE.md) for the component and data attributions.
 
+`vibefoil/` is a pinned reference submodule from
+<https://github.com/kennyjensen/vibefoil>. Initialize it with
+`git submodule update --init --recursive`; its URL is recorded in the root
+`.gitmodules` so fresh checkouts and CI can retrieve the pinned revision.
+
 Place newly vendored upstream source and reference material in a named directory
 here. Preserve upstream copyright and license files unchanged. Add a README
 recording author, source URL, version or revision, license, files actually used,

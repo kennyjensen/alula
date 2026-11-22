@@ -1,0 +1,3 @@
+[submodule "third_party/vibefoil"]
+    path = third_party/vibefoil
+    url = https://github.com/kennyjensen/vibefoil.git
