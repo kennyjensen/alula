@@ -55,7 +55,10 @@ test('RAE 64x9 converges from the normal inviscid form with Standard startup', a
   expect(run.result.status).toBe('research-converged');
   expect(run.result.settings).toMatchObject({ requestedEulerStartup: 'standard', eulerStartup: 'harmonic-shock', maxIterations: 80 });
   expect(run.result.residual).toBeLessThanOrEqual(1e-10);
-  expect(run.result).toMatchObject({ mach: .74, alpha: 2.68, gridValid: true, cells: 9120 });
+  // Auto inlet/wake lengths now use half the surface interval count.
+  expect(run.input.gridInletIntervals).toBeUndefined();
+  expect(run.input.gridOutletIntervals).toBeUndefined();
+  expect(run.result).toMatchObject({ mach: .74, alpha: 2.68, gridValid: true, cells: 4536 });
   expect(run.result.upwind).toMatchObject({ mucon: 1, mcrit: .99 });
   await expect(page.locator('#status')).toHaveText('Euler converged · research');
 });
