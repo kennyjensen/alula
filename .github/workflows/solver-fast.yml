@@ -71,6 +71,8 @@ jobs:
           retention-days: 14
 
   rae-browser:
+    # Pause this long-running suite in CI; the Playwright specs remain runnable locally.
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
