@@ -10,6 +10,33 @@ import { intrinsicBodyFixture } from './fixtures/intrinsic-body.js';
 const tolerance = 1e-10;
 const serial = v => JSON.parse(JSON.stringify(v, (_, value) => ArrayBuffer.isView(value) ? Array.from(value) : value));
 let cached, startupError;
+
+test('Mach restart accepts verified change convergence and clears its evidence at the new condition', () => {
+  const input = { ...intrinsicBodyFixture({ elements: 2, bodySegments: 4, tubes: 2, mach: .2 }),
+    streamwiseMode: 'hybrid', hybrid: { epsilonP: 1e-5 },
+    upwind: { mucon: 1, mcrit: .99, boundary: { kind: 'unfiltered-first-two' } } };
+  const result = solveCoupledStreamtubeIses(input, { edgeMatching: 'section-velocity',
+    blThermodynamics: 'historical-common-isentrope', transitionMode: 'automatic',
+    maxIterations: 12, tolerance, stepAcceptance: 'admissible', convergence: 'mses' });
+  assert.equal(result.converged, true);
+  assert.equal(result.reason, 'solution changes');
+  assert.ok(Object.values(result.families).some(v => v > tolerance));
+  const checkpoint = serial(result.checkpoint), before = structuredClone(checkpoint);
+  const same = initializeCoupledStreamtubeFromFlow(.2, checkpoint);
+  assert.deepEqual(same.checkpoint.convergence, checkpoint.convergence);
+  const changed = initializeCoupledStreamtubeFromFlow(.21, checkpoint);
+  assert.equal(changed.checkpoint.convergence, undefined);
+  assert.equal(changed.diagnostics.targetConverged, false);
+  assert.deepEqual(checkpoint, before);
+  for (const mutate of [
+    cp => { delete cp.convergence.newton; },
+    cp => { cp.convergence.stable = false; },
+    cp => { cp.convergence.families.euler *= 2; },
+  ]) {
+    const broken = structuredClone(checkpoint); mutate(broken);
+    assert.throws(() => initializeCoupledStreamtubeFromFlow(.21, broken), /source checkpoint/);
+  }
+});
 function accepted() {
   if (startupError) throw startupError;
   if (!cached) try {

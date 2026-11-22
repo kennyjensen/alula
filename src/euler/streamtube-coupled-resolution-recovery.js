@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+import { coupledConvergenceSatisfied } from './streamtube-coupled-convergence.js';
 import { recoverCoupledTransition } from './streamtube-transition-recovery.js';
 
 // A bounded change of initial grid, not a change of operating conditions.
@@ -48,7 +49,7 @@ export function recoverCoupledResolution(result, input, { sourceInput, solve, ma
     try { return callback?.(...args); } catch (error) { observerFailure = true; throw error; }
   };
   const root = value => value?.converged === true && value.checkpoint && value.mesh?.quality?.valid === true
-    && ['euler', 'boundaryLayer', 'edgeMatching'].every(k => Number.isFinite(value.families?.[k]) && value.families[k] >= 0 && value.families[k] <= tolerance);
+    && coupledConvergenceSatisfied(value, tolerance);
   const label = event => ({ ...event, resolutionRecovery: diagnostics, requestedGridIntervals: input.gridIntervals });
   try {
     source = solve(sourceInput, { direct: true, resolutionRecovery: false, machRecovery: false, maxIterations, eulerMaxIterations, tolerance,

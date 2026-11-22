@@ -48,6 +48,10 @@ jobs:
             tests/source-surface-spacing.test.js \
             tests/elliptic-convex-sweeps.test.js \
             tests/solver-error-context.test.js \
+            tests/streamtube-coupled-grid-sequence.test.js \
+            tests/streamtube-coupled-grid-profile.test.js \
+            tests/streamtube-recovery-convergence.test.js \
+            tests/streamtube-coupled-flow-restart.test.js \
             2>&1 | tee ci-artifacts/fast-tests.log
       - name: Geometry inventory, including currently guarded cases
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}

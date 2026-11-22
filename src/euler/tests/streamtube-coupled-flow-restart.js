@@ -2,6 +2,7 @@
 // Complete accepted ISES Euler/BL checkpoint transfer between Mach conditions.
 // This changes the gas reference, not the physical density or stored BL state.
 // No cold initializer, density inversion, SMOVE or Newton operation is used.
+import { coupledConvergenceSatisfied } from '../streamtube-coupled-convergence.js';
 import { createCoupledStreamtubeBody } from '../streamtube-coupled.js';
 import { streamtubeMeshSnapshot } from '../streamtube-mesh-preview.js';
 import { prepareCoupledMrchduProfiles } from '../streamtube-coupled-mrchdu-predictor.js';
@@ -57,8 +58,8 @@ export function initializeCoupledStreamtubeFromFlow(targetMach, checkpoint, { to
   const allowed = ['reynolds', 'ncrit', 'tripFractions', 'edgeMatching', 'transitionMode', 'transitionState', 'blThermodynamics', 'hkFloorLinearization', 'geometryReplay'];
   require(Object.keys(options).every(k => allowed.includes(k)), 'Unsupported coupled checkpoint options.');
   const familyNames = ['euler', 'boundaryLayer', 'edgeMatching'];
-  require(familyNames.every(k => Number.isFinite(saved.families[k]) && saved.families[k] >= 0
-    && saved.families[k] <= tolerance), 'Coupled source checkpoint must already satisfy the residual tolerance.');
+  require(coupledConvergenceSatisfied(saved, tolerance),
+    'Coupled source checkpoint must already satisfy the residual tolerance or verified change criterion.');
   const c = saved.continuation, bodies = input.bodies;
   require(Array.isArray(bodies) && ['convex', 'ises-sampled'].includes(c.iterationGeometry)
     && ['listing', 'admissible', 'armijo', 'event-armijo'].includes(c.stepAcceptance) && ['listing', 'prose'].includes(c.stagnationLimiter)
@@ -83,7 +84,8 @@ export function initializeCoupledStreamtubeFromFlow(targetMach, checkpoint, { to
   require(source.admissible(sourceState), 'Coupled source checkpoint fails physical or convex-grid admissibility.');
   require(familyNames.every(k => before.families[k] === saved.families[k]),
     'Coupled source checkpoint residual does not replay exactly.');
-  require(maximum(before.residual) <= tolerance, 'Reconstructed coupled source must satisfy the residual tolerance.');
+  require(coupledConvergenceSatisfied({ families: before.families, convergence: saved.convergence }, tolerance),
+    'Reconstructed coupled source must satisfy the residual tolerance or verified change criterion.');
   const sourceNodeDeparture = pointDeparture(before.outer.nodes, initialEuler.nodes);
   // Subtracting and restoring a displacement can round a reconstructed
   // coordinate by an ulp. Residual families above still replay exactly;
@@ -167,10 +169,12 @@ export function initializeCoupledStreamtubeFromFlow(targetMach, checkpoint, { to
   const targetCheckpoint = structuredClone({ ...saved, families: { ...value.families }, restart: { ...saved.restart, input: targetInput,
     ...(targetPhaseInitialization ? { options: { ...saved.restart.options, transitionState: system.bl.snapshotActive() },
       initialBL: Array.isArray(initialBL) ? Array.from(initial.subarray(system.ne)) : initial.subarray(system.ne).slice() } : {}) } });
+  // A different operating point must earn its own convergence evidence.
+  if (alphaChanged || targetMach !== source.euler.conditions.mach) delete targetCheckpoint.convergence;
   return { system, initial, value, checkpoint: targetCheckpoint, diagnostics: {
     sourceMach: source.euler.conditions.mach, targetMach, sameMach: targetMach === source.euler.conditions.mach,
     sourceFamilies: { ...before.families }, targetFamilies: { ...value.families }, targetResidual: maximum(value.residual),
-    sourceConverged: true, targetConverged: maximum(value.residual) <= tolerance,
+    sourceConverged: true, targetConverged: coupledConvergenceSatisfied(targetCheckpoint, tolerance),
     physicalDensityPreserved: true, physicalMassPreserved: !alphaChanged,
     ...(alphaChanged ? { sourceAlpha: input.alpha ?? 0, targetAlpha,
       inletMassTreatment: 'recomputed from freestream normal flux at target incidence' } : {}), packedBLPreserved: same(initial.subarray(system.ne), initialBL),
@@ -237,6 +241,7 @@ function predictedTarget(targetMach,saved,source,sourceState,before,undisplacedR
   const targetCheckpoint=structuredClone({...saved,families:{...value.families},restart:{...f,input:targetInput,options,initialEuler,initialBL}});
   // A serialized copy must reproduce ALL equations exactly, not merely
   // appear positive. This is a frozen replay, without Newton or new meshing.
+  delete targetCheckpoint.convergence;
   const check=createCoupledStreamtubeBody(targetCheckpoint.restart.input,{...targetCheckpoint.restart.options,
     initialEuler:targetCheckpoint.restart.initialEuler,initialBL:targetCheckpoint.restart.initialBL});
   const replay=check.evaluate(check.initial);

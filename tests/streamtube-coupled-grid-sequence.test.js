@@ -92,7 +92,11 @@ async function harness({ partial = false } = {}) {
       pivotTolerance: .001, iterationGeometry: 'ises-sampled', stepAcceptance: 'admissible', stagnationLimiter: 'listing',
       blUpdate: 'xfoil', projectionGeometry: 'boundary-increment' } } });
   const stubs = { ...shearPolicy, coupledConvergenceSatisfied,
-    prepareRefinedCoupledGridProfile(prepared) { calls.profiles++; return { ...prepared, nativeProfilePrepared: true }; },
+    prepareRefinedCoupledGridProfile(prepared) {
+      calls.profiles++;
+      if (flags.profileFailure) throw flags.profileFailure;
+      return { ...prepared, nativeProfilePrepared: true };
+    },
     createStreamtubeBodySystem(i) { calls.constructs++; return euler(i); },
     initialStreamtubeDisplacement: () => ({ surfaces: [], wakes: [] }),
     createCoupledStreamtubeBody: i => system(i),
@@ -131,6 +135,48 @@ test('native profile preparation is explicit and the omitted or interpolate pred
       assert.throws(() => invalid.prepareCoupledGridSequence(invalid.args, { blPredictor }), /BL predictor/);
     assert.equal(invalid.calls.constructs, 0); assert.equal(invalid.calls.refinements, 0); assert.equal(invalid.calls.profiles, 0);
   } finally { invalid.release(); }
+});
+
+for (const diagnostics of [
+  { stage: 'native profile preparation', warnings: ['MRCHDU: Convergence failed'] },
+  { stage: 'complete target domain', domainFailure: { kind: 'evaluation-error', code: 'streamtube-interface-pressure' } },
+]) test(`rejected predictor at ${diagnostics.stage} retains the validated interpolation as an unsolved seed`, async () => {
+  const h = await harness();
+  try {
+    const original = h.prepareCoupledGridSequence(h.args);
+    h.flags.profileFailure = Object.assign(new Error('Native grid-profile preparation did not converge locally.'), {
+      code: 'COUPLED_GRID_PROFILE_PREPARATION', diagnostics,
+    });
+    const seed = h.prepareCoupledGridSequence(h.args, { blPredictor: 'xfoil-mrchdu' });
+    assert.deepEqual(seed.initialEuler, original.initialEuler);
+    assert.deepEqual(seed.initialBL, original.initialBL);
+    assert.deepEqual(seed.options, original.options);
+    assert.deepEqual(seed.value, original.value);
+    assert.equal(seed.initialization.flowSolved, false);
+    assert.equal(seed.nativeProfilePrepared, undefined);
+    const fallback = seed.transfer.profilePreparationFallback;
+    assert.equal(fallback.method, 'complete-state-interpolation');
+    assert.deepEqual(fallback.failure.diagnostics, h.flags.profileFailure.diagnostics);
+    assert.deepEqual(seed.mesh.initialization.gridRefinement.profilePreparationFallback, fallback);
+    assert.deepEqual(seed.initialization.transfer.profilePreparationFallback, fallback);
+    assert.equal(h.calls.profiles, 1);
+  } finally { h.release(); }
+});
+
+test('native predictor replay, invariant and unexpected errors cannot trigger interpolation fallback', async () => {
+  const h = await harness();
+  try {
+    for (const [code, stage, warnings] of [
+      ['COUPLED_GRID_PROFILE_PREPARATION', 'source replay', ['warning']],
+      ['COUPLED_GRID_PROFILE_PREPARATION', 'complete target domain', ['warning']],
+      ['COUPLED_GRID_PROFILE_PREPARATION', 'native profile preparation', []],
+      ['OTHER_ERROR', 'native profile preparation', ['warning']],
+    ]) {
+      const error = Object.assign(new Error('Rejected predictor'), { code, diagnostics: { stage, warnings } });
+      h.flags.profileFailure = error;
+      assert.throws(() => h.prepareCoupledGridSequence(h.args, { blPredictor: 'xfoil-mrchdu' }), e => e === error);
+    }
+  } finally { h.release(); }
 });
 
 test('accepted orchestration transfers complete state with updated phases, unchanged physics and explicit replacement grid', async () => {

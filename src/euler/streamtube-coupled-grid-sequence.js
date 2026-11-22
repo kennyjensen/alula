@@ -208,5 +208,23 @@ export function prepareCoupledGridSequence({ sourceSystem, sourceResult, input, 
       : 'Complete-state nested grid sequencing from a converged coupled root', thicknessFactor: 1,
       history: [{ attempt: 0, accepted: true, thicknessFactor: 1, quality: mesh.quality, families: value.families }],
       equationsChanged: false, flowSolved: false, transfer: structuredClone(transfer) } };
-  return blPredictor === 'xfoil-mrchdu' ? prepareRefinedCoupledGridProfile(prepared) : prepared;
+  if (blPredictor !== 'xfoil-mrchdu') return prepared;
+  try { return prepareRefinedCoupledGridProfile(prepared); }
+  catch (error) {
+    // MRCHDU is an optional initial-guess predictor. A locally failed march
+    // or inadmissible predicted target must not discard the complete,
+    // admissible interpolation already checked above. Replay/invariant and
+    // unexpected errors still fail closed.
+    const d = error?.diagnostics;
+    const rejectedPrediction = d?.stage === 'native profile preparation'
+      && Array.isArray(d.warnings) && d.warnings.length > 0
+      || d?.stage === 'complete target domain' && d.domainFailure;
+    if (error?.code !== 'COUPLED_GRID_PROFILE_PREPARATION' || !rejectedPrediction) throw error;
+    const fallback = { method: 'complete-state-interpolation', initialGuessOnly: true,
+      equationsChanged: false, failure: { message: error.message, code: error.code,
+        diagnostics: structuredClone(error.diagnostics) } };
+    for (const record of [prepared.transfer, prepared.mesh.initialization.gridRefinement, prepared.initialization.transfer])
+      record.profilePreparationFallback = structuredClone(fallback);
+    return prepared;
+  }
 }

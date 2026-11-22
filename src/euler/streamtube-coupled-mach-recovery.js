@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+import { coupledConvergenceSatisfied } from './streamtube-coupled-convergence.js';
 import { initializeCoupledStreamtubeFromFlow } from './tests/streamtube-coupled-flow-restart.js';
 import { solveCoupledStreamtubeIses } from './streamtube-coupled-ises.js';
 import { createCoupledStreamtubeBody } from './streamtube-coupled.js';
@@ -28,7 +29,7 @@ export function recoverCoupledMach(original, input, { sourceInput, solve, maxIte
   const label = mach => ({ mach, actualMach: mach, targetMach: input.mach,
     actualAlpha: input.alpha ?? 0, targetAlpha: input.alpha ?? 0, machRecovery: diagnostics });
   const root = r => r?.converged === true && r.checkpoint && r.mesh?.quality?.valid === true
-    && ['euler', 'boundaryLayer', 'edgeMatching'].every(k => Number.isFinite(r.families?.[k]) && r.families[k] >= 0 && r.families[k] <= tolerance);
+    && coupledConvergenceSatisfied(r, tolerance);
   const phases = [{ result: original }];
   let retained;
   try {

@@ -127,7 +127,12 @@ test('strict domain, preserved Euler invariants and complete canonical residual 
     [{ changeDensity: true }, /physical Euler density/], [{ staleReplay: true }, /canonical full residual/]]) {
     const h = await harness(config), before = clone(h.prepared);
     assert.throws(() => h.prepareCoupledGridProfile(h.prepared), error => {
-      assert.equal(error.code, 'COUPLED_GRID_PROFILE_PREPARATION'); assert.match(error.message, message); return true;
+      assert.equal(error.code, 'COUPLED_GRID_PROFILE_PREPARATION'); assert.match(error.message, message);
+      if (config.rejectDomain) {
+        assert.equal(error.diagnostics.stage, 'complete target domain');
+        assert.deepEqual(error.diagnostics.domainFailure, { kind: 'inadmissible' });
+      } else assert.equal(error.diagnostics.domainFailure, undefined);
+      return true;
     });
     assert.deepEqual(h.prepared, before);
   }

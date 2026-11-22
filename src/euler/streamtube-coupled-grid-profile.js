@@ -53,7 +53,9 @@ export function prepareCoupledGridProfile(prepared, { wakeWidthIncrement = false
   const domain = (system, state) => {
     diagnostics.operations.strictDomainChecks++;
     let failure;
-    require(system.admissible(state, { requireConvex: true, onFailure: value => { failure = value; } }),
+    const admissible = system.admissible(state, { requireConvex: true, onFailure: value => { failure = value; } });
+    if (!admissible) diagnostics.domainFailure = failure ?? { kind: 'inadmissible' };
+    require(admissible,
       `Grid profile state is outside the physical/convex domain${failure ? `: ${JSON.stringify(failure)}` : '.'}`);
   };
   try {
