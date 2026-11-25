@@ -10,8 +10,9 @@ conservative cell equations, inlet and outlet conditions, and a sparse
 Jacobian. It supports subsonic channels and transonic nozzle shocks. The
 airfoil body evaluator accepts prepared multi-element grids, including
 separate finite trailing-edge wake banks. It provides analytic Jacobian
-products and a KLU Newton solve using native coordinates. Generating the
-Euler grid from contours and coupling boundary layers remain in progress.
+products and a KLU Newton solve using native coordinates. The native Euler
+command also builds a startup grid from contours. Finer and closely spaced
+multi-element grids still need startup improvements.
 
 ```sh
 make -C native
@@ -55,6 +56,65 @@ inviscid pressure force projected along the freestream. The solver factors the
 influence matrix once per geometry and caches two freestream responses.
 Integrated loads then take constant work per angle. Returning surface pressure
 takes one pass over the panels.
+
+`alula_panel_field_create` prepares the velocity and streamfunction field for
+one angle using the existing factorization responses. The field supports
+sharp and finite trailing edges, including the source branch jumps behind
+finite bases. `trace.h` advances this field in velocity potential or physical
+arc length. It can stop on a plane, reject steps that intersect the solid using
+caller-supplied geometry checks, and stream accepted points to the grid
+initializer without allocating a path.
+
+`panel_guide.h` prepares ordered inlet streamfunction levels and traces the
+incoming dividing curves, wake centerlines, and outer streamlines. It uses
+the collocation-speed stagnation estimate and rejects steps through the solid
+contours. Interior streamlines start from a specified inlet streamfunction
+level. Guide intersections with a supplied x-plane must be unique in the
+resolved path.
+
+`alula-euler` reads the same contours and trailing-edge metadata as
+`alula-panel`. For a compressible Euler run, pass angle in degrees, Mach,
+and optionally the surface interval and tube counts. The defaults of six
+surface intervals and four tubes per passage are a coarse startup setting.
+The command emits a JSON grid and solve report and exits with status 1 on
+grid failure or nonconvergence.
+
+```sh
+native/alula-euler --topology 2.68 0.74 6 4 < contours.txt
+native/alula-euler --topology --mesh-only 2.68 0.74 6 4 < contours.txt
+```
+
+`airfoil_grid.h` exposes grid setup, the moving-grid solve, and the current
+nodes, density, passage mass flow, and farfield strengths. The startup grid
+uses contour splines and panel-guided boundaries with interpolated interior
+cross-lines. Bounded vertex repair preserves the solid and guide boundaries.
+The contour-to-Euler checks include coarse NACA 2412 and stacked NACA 0012
+cases, a coarse transonic RAE 2822 solve, and the starting grid for NLR 7301
+with flap.
+
+`alula-euler --bl RE NCRIT` marches the integral boundary layer and merged
+wake on the converged Euler edge speeds. The report includes completed
+stations, transition locations, and terminal thicknesses for each branch.
+`--coupled RE NCRIT` alternates between the boundary-layer march and a warm
+Euler solve on the displaced grid. It checks the Euler and boundary-layer
+residuals and requires the displacement thickness to agree within 1e-8
+reference chords. The report gives lift and moment from surface pressure,
+along with separate pressure and viscous wake drag estimates.
+
+```sh
+native/alula-euler --topology --bl 1000000 9 0 0.1 8 4 < contours.txt
+native/alula-euler --topology --coupled 1000000 9 0 0.1 8 4 < contours.txt
+```
+
+Coupled checks cover coarse subsonic sharp and finite-base NACA 2412 and
+stacked NACA 0012. The direct march can stop in adverse pressure gradients,
+including during coupled startup for the coarse transonic RAE 2822 case.
+
+`bl.h` exposes similarity, laminar, mixed transition, turbulent and wake
+residuals and fixed-edge profile initialization. The C equations are
+derived from Mark Drela's GPL XFOIL and Alula's adapted Vibefoil port.
+See [source provenance](../src/viscous/xfoil/PROVENANCE.json) and
+[the vendored XFOIL sources](../third_party/Xfoil).
 
 `libalula.a` exposes the panel, Euler cell, channel, and body interfaces in
 `panel.h`, `streamtube.h`, `channel.h`, and `body.h`. An Euler cell can be prepared

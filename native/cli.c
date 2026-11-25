@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#include "panel.h"
+#include "cli_geometry.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -20,29 +20,12 @@ int main(int argc, char **argv)
         return 2;
     }
 
-    size_t count;
-    AlulaContour contours[6] = {0};
+    size_t count, used;
+    AlulaContour contours[6];
     AlulaPoint points[ALULA_PANEL_MAX_TOTAL+6];
     AlulaPanelSystem *system = NULL;
     int status = 1;
-    if (scanf("%zu", &count) != 1 || count < 1 || count > 6) goto invalid;
-    size_t used = 0;
-    for (size_t e = 0; e < count; ++e) {
-        size_t length;
-        if (scanf("%zu", &length) != 1 || length < 4 || length > ALULA_PANEL_MAX_TOTAL+6-used) goto invalid;
-        contours[e] = (AlulaContour){.points=points+used, .count=length};
-        if (topology) {
-            char kind;
-            if (scanf(" %c", &kind) != 1 || (kind != 'S' && kind != 'F')) goto invalid;
-            if (kind == 'F') {
-                contours[e].finite_base = 1;
-                if (scanf("%zu%zu", &contours[e].upper_index, &contours[e].lower_index) != 2) goto invalid;
-            }
-        }
-        for (size_t i = 0; i < length; ++i)
-            if (scanf("%lf%lf", &points[used+i].x, &points[used+i].y) != 2) goto invalid;
-        used += length;
-    }
+    if (!alula_cli_contours(topology,contours,points,&count,&used)) goto invalid;
     system = alula_panel_prepare(contours, count, 1, (AlulaPoint){.25, 0});
     if (!system) goto invalid;
     for (int i = first; i < argc; ++i) {

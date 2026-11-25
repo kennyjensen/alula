@@ -115,6 +115,13 @@ static int finite_section(AlulaSection s)
         && isfinite(s.enthalpy) && isfinite(s.mach_sq);
 }
 
+int alula_cell_geometry_only(AlulaCell *cell,const AlulaCellInput *in)
+{
+    if (!valid_geometry(in)) return 0;
+    cell->input=*in;
+    return geometry(cell);
+}
+
 AlulaCellStatus alula_cell_initialize(AlulaCell *cell, const AlulaCellInput *in)
 {
     if (!cell || !in || !positive(in->mass) || !positive(in->h0) || !positive(in->density[0])

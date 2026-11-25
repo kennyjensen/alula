@@ -1,7 +1,10 @@
 /alula-panel
+/alula-euler
 /check-streamtube
 /libalula.a
 /*.o
 /.klu/
 /check-channel
 /check-body
+/check-bl
+/check-panel-field

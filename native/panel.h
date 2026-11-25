@@ -15,6 +15,7 @@ typedef struct {
     size_t upper_index, lower_index;
 } AlulaContour;
 typedef struct AlulaPanelSystem AlulaPanelSystem;
+typedef struct AlulaPanelField AlulaPanelField;
 typedef struct {
     double cl, cm, pressure_drag, circulation_lift, residual_bound;
 } AlulaPanelResult;
@@ -30,5 +31,18 @@ AlulaPanelSystem *alula_panel_prepare(const AlulaContour *contours,
 int alula_panel_solve(const AlulaPanelSystem *system, double alpha,
     AlulaPanelResult *result, double *cp);
 void alula_panel_free(AlulaPanelSystem *system);
+
+/* Cache sheet strengths for one angle. The panel system must outlive the
+ * field. Concurrent evaluations of the same field are safe. Supply either
+ * output or both. Velocity requires off-sheet points, and the streamfunction
+ * is undefined on the downstream cuts of nonzero finite-base sources. */
+AlulaPanelField *alula_panel_field_create(const AlulaPanelSystem *system, double alpha);
+int alula_panel_field_sample(const AlulaPanelField *field, AlulaPoint point,
+    AlulaPoint *velocity, double *streamfunction);
+/* Signed jump across source cuts for an oriented line from a to b.
+ * Subtract it from the sampled difference to continue the inlet chart. */
+double alula_panel_field_branch_increment(const AlulaPanelField *field,
+    AlulaPoint a, AlulaPoint b);
+void alula_panel_field_free(AlulaPanelField *field);
 
 #endif

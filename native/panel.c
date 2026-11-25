@@ -122,6 +122,8 @@ void alula_panel_free(AlulaPanelSystem *system)
 {
     if (!system) return;
     free(system->pressure);
+    free(system->segments);
+    free(system->responses);
     free(system);
 }
 
@@ -158,7 +160,8 @@ AlulaPanelSystem *alula_panel_prepare(const AlulaContour *contours,
     double *factors = malloc(size*size*sizeof *factors);
     double *tangential = calloc(n*size, sizeof *tangential);
     double *b = calloc(2*size, sizeof *b);
-    if (!a || !b || !factors || !tangential || !panels) goto fail;
+    system->segments = calloc(n, sizeof *system->segments);
+    if (!a || !b || !factors || !tangential || !panels || !system->segments) goto fail;
 
     size_t first = 0;
     for (size_t e = 0; e < count; ++e) {
@@ -175,6 +178,9 @@ AlulaPanelSystem *alula_panel_prepare(const AlulaContour *contours,
             panels[first+k] = (Panel){
                 p, {p.x+.5*dx, p.y+.5*dy}, {dx/length, dy/length},
                 {dy/length, -dx/length}, length, first+e+k
+            };
+            system->segments[first+k] = (Segment){
+                .geometry=panels[first+k], .end=q, .body=e, .log_length=log(length)
             };
         }
         if (!(area > 0) || !isfinite(area)) goto fail;
@@ -224,6 +230,7 @@ AlulaPanelSystem *alula_panel_prepare(const AlulaContour *contours,
                 qy += tangential[i*size+j]*b[size+j];
             }
             system->pressure[i] = pressure_between(qx, qy, qx, qy);
+            system->segments[i].tangential = (AlulaPoint){qx, qy};
         }
     }
     system->residual_bound = hypot(rx, ry);
@@ -241,7 +248,10 @@ AlulaPanelSystem *alula_panel_prepare(const AlulaContour *contours,
     free(a);
     free(factors);
     free(tangential);
-    free(b);
+    system->wetted = n;
+    system->bodies = count;
+    system->response_size = size;
+    system->responses = b;
     return system;
 fail:
     free(panels);

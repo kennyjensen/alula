@@ -12,13 +12,6 @@ typedef struct {
 } Range;
 
 typedef struct {
-    Panel geometry;
-    AlulaPoint end;
-    size_t output, body;
-    double source, vortex, log_length;
-} Segment;
-
-typedef struct {
     AlulaPoint point, tangent;
     size_t body;
     int interior;
@@ -223,7 +216,7 @@ static void log_series(double x, double y, double r2, double *zeroth,
     }
 }
 
-static void vortex_psi(AlulaPoint point, const Segment *s, double q[2])
+void alula_panel_vortex_psi(AlulaPoint point, const Segment *s, double q[2])
 {
     const Panel *p = &s->geometry;
     AlulaPoint d = subtract(point, p->a);
@@ -244,16 +237,16 @@ static void vortex_psi(AlulaPoint point, const Segment *s, double q[2])
     }
 }
 
-static double base_psi(AlulaPoint point, const Segment *s, const Range *r)
+double alula_panel_base_psi(AlulaPoint point, const Segment *s, double source, double vortex)
 {
     const Panel *p = &s->geometry;
-    AlulaPoint d = subtract(point, p->a), common = subtract(point, r->origin);
+    AlulaPoint d = subtract(point, p->a), common = subtract(point, s->cut_origin);
     int at_start = same(point, p->a), at_end = same(point, s->end);
-    double cut_cross = cross(r->direction, common), cut_dot = dot(r->direction, common);
+    double cut_cross = cross(s->cut_direction, common), cut_dot = dot(s->cut_direction, common);
     double coordinate_max = fmax(fmax(fabs(point.x), fabs(point.y)),
-        fmax(fabs(r->origin.x), fabs(r->origin.y)));
+        fmax(fabs(s->cut_origin.x), fabs(s->cut_origin.y)));
     double tol = 16*DBL_EPSILON*fmax(p->length, coordinate_max);
-    if (!at_start && !at_end && s->source != 0 && cut_dot >= 0 && fabs(cut_cross) <= tol)
+    if (!at_start && !at_end && source != 0 && cut_dot >= 0 && fabs(cut_cross) <= tol)
         return NAN;
     double x = at_start ? 0 : at_end ? 1 : dot(d, p->tangent)/p->length;
     double y = at_start || at_end ? 0 : -dot(d, p->normal)/p->length;
@@ -272,7 +265,7 @@ static double base_psi(AlulaPoint point, const Segment *s, const Range *r)
     double angle = atan2(cut_cross, cut_dot);
     if (angle < 0) angle += 2*ALULA_PI;
     angle += atan2(cross(common, relative), dot(common, relative));
-    return p->length*(s->source*(imaginary+angle-midpoint_angle)-s->vortex*real)/(2*ALULA_PI);
+    return p->length*(source*(imaginary+angle-midpoint_angle)-vortex*real)/(2*ALULA_PI);
 }
 
 static int setup_geometry(const AlulaContour *contours, size_t count, size_t total,
@@ -321,6 +314,10 @@ static int setup_geometry(const AlulaContour *contours, size_t count, size_t tot
                 Segment *s = segments+base+k;
                 s->source = -.5*cross(t, s->geometry.tangent);
                 s->vortex = -.5*dot(t, s->geometry.tangent);
+                s->cut_origin = r->origin;
+                s->cut_direction = r->direction;
+                s->geometry.node = r->start;
+                s->last_node = r->end;
             }
             rows[r->end] = (Row){.point=bottom, .body=e};
         } else {
@@ -360,7 +357,7 @@ static void assemble_row(double *a, double *bx, double *by, const Row *row, size
             alula_panel_vortex(row->point, &s->geometry, 0, velocity);
             for (size_t k = 0; k < 2; ++k) q[k] = dot(velocity[k], row->tangent);
         } else {
-            vortex_psi(row->point, s, q);
+            alula_panel_vortex_psi(row->point, s, q);
             q[0] *= inv_chord;
             q[1] *= inv_chord;
         }
@@ -377,7 +374,7 @@ static void assemble_row(double *a, double *bx, double *by, const Row *row, size
             AlulaPoint v = add(velocity[0], velocity[1]), source = {v.y, -v.x};
             q = s->source*dot(source, row->tangent)+s->vortex*dot(v, row->tangent);
         } else {
-            q = base_psi(row->point, s, r)*inv_chord;
+            q = alula_panel_base_psi(row->point, s, s->source, s->vortex)*inv_chord;
         }
         a[r->start] += q;
         a[r->end] -= q;
@@ -431,12 +428,13 @@ AlulaPanelSystem *alula_panel_prepare_streamfunction(const AlulaContour *contour
     system->residual_bound = hypot(rx, ry);
     if (!(system->residual_bound < 1e-9)) goto done;
     for (size_t i = 0; i < total; ++i) {
-        const Segment *s = segments+i;
+        Segment *s = segments+i;
         const Range *r = ranges+s->body;
         int base = i >= wet;
         size_t a0 = base ? r->start : s->geometry.node;
         size_t a1 = base ? r->end : a0+1;
         double ax = b[a0], ay = b[size+a0], bx = b[a1], by = b[size+a1];
+        if (!base) s->tangential = (AlulaPoint){.5*(ax+bx), .5*(ay+by)};
         Pressure p = pressure_between(ax, ay, bx, by);
         Pressure gradient = base ? (Pressure){0} :
             (Pressure){ax*ax-bx*bx, 2*(ax*ay-bx*by), ay*ay-by*by};
@@ -446,6 +444,16 @@ AlulaPanelSystem *alula_panel_prepare_streamfunction(const AlulaContour *contour
         system->gx += gx*s->geometry.length/chord;
         system->gy += gy*s->geometry.length/chord;
     }
+    system->wetted = wet;
+    system->bodies = count;
+    system->dirichlet = 1;
+    for (size_t e = 0; e < count; ++e)
+        system->boundary_psi[e] = (AlulaPoint){chord*b[strength+e], chord*b[size+strength+e]};
+    system->response_size = size;
+    system->segments = segments;
+    system->responses = b;
+    segments = NULL;
+    b = NULL;
     success = 1;
 done:
     free(a);

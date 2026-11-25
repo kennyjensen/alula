@@ -8,5 +8,6 @@
  * speed filter. No undissipated interface-pressure gate applies in between. */
 AlulaCellStatus alula_cell_initialize(AlulaCell *cell, const AlulaCellInput *input);
 AlulaCellStatus alula_cell_flux(AlulaCell *cell);
+int alula_cell_geometry_only(AlulaCell *cell, const AlulaCellInput *input);
 
 #endif

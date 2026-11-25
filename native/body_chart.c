@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "body_chart.h"
 #include "body_internal.h"
+#include "contour.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -17,9 +18,9 @@ typedef struct {
 } NodeSpec;
 
 typedef struct {
-    int n, stations, material;
-    double *arc, *fraction[2], *thickness[2], *width;
-    AlulaPoint *points,*second;
+    int stations, material;
+    AlulaContourSpline curve;
+    double *fraction[2], *thickness[2], *width;
     double stagnation;
 } Surface;
 
@@ -87,7 +88,7 @@ static AlulaPoint unit_derivative(AlulaPoint v,AlulaPoint t,double length)
 
 static void surface_free(Surface *s)
 {
-    free(s->arc);free(s->points);free(s->second);free(s->fraction[0]);free(s->fraction[1]);
+    alula_contour_spline_free(&s->curve);free(s->fraction[0]);free(s->fraction[1]);
     free(s->thickness[0]);free(s->thickness[1]);free(s->width);
 }
 
@@ -96,34 +97,9 @@ static int surface_create(Surface *s,const AlulaBodySurface *in,AlulaBodyCut cut
     int n=in->count, stations=cut.trailing-cut.leading+1;
     if(n<4 || n>4097 || !in->surface || !in->lower_fraction || !in->upper_fraction ||
         (displaced && (!in->lower_thickness || !in->upper_thickness || !in->wake_width))) return 0;
-    s->n=n;s->stations=stations;s->stagnation=in->stagnation;s->material=in->material_wake;
-    s->arc=calloc((size_t)n,sizeof *s->arc);
-    s->points=malloc((size_t)n*sizeof *s->points);
-    s->second=calloc((size_t)n,sizeof *s->second);
-    double *diag=malloc((size_t)n*sizeof *diag);
-    if (!s->arc || !s->points || !s->second || !diag) {free(diag);return 0;}
-    memcpy(s->points,in->surface,(size_t)n*sizeof *s->points);
-    for(int i=1;i<n;++i) {
-        double ds=norm(sub(s->points[i],s->points[i-1]));
-        s->arc[i]=s->arc[i-1]+ds;
-        if (!isfinite(s->arc[i]) || !(s->arc[i]>s->arc[i-1])) {free(diag);return 0;}
-    }
-    if (!(s->stagnation>0 && s->stagnation<s->arc[n-1])) {free(diag);return 0;}
-    for(int i=1;i<n-1;++i) {
-        double l=s->arc[i]-s->arc[i-1],r=s->arc[i+1]-s->arc[i];
-        diag[i]=2*(l+r);
-        AlulaPoint f=scale(sub(scale(sub(s->points[i+1],s->points[i]),1/r),
-            scale(sub(s->points[i],s->points[i-1]),1/l)),6);
-        if(i>1) {
-            double a=l/diag[i-1];
-            diag[i]-=a*l;
-            f=sub(f,scale(s->second[i-1],a));
-        }
-        s->second[i]=f;
-    }
-    for(int i=n-2;i>0;--i)
-        s->second[i]=scale(sub(s->second[i],scale(s->second[i+1],s->arc[i+1]-s->arc[i])),1/diag[i]);
-    free(diag);
+    s->stations=stations;s->stagnation=in->stagnation;s->material=in->material_wake;
+    if (!alula_contour_spline_create(&s->curve,in->surface,n) ||
+        !(s->stagnation>0 && s->stagnation<s->curve.arc[n-1])) return 0;
 
     for(int side=0;side<2;++side) {
         const double *f=side?in->upper_fraction:in->lower_fraction;
@@ -152,31 +128,15 @@ static int surface_create(Surface *s,const AlulaBodySurface *in,AlulaBodyCut cut
     return 1;
 }
 
-static void spline(const Surface *s,double arc,AlulaPoint *p,AlulaPoint *t,AlulaPoint *dd)
-{
-    int lo=0,hi=s->n-1;
-    while(hi-lo>1) {
-        int mid=lo+(hi-lo)/2;
-        if(s->arc[mid]>arc) hi=mid; else lo=mid;
-    }
-    double h=s->arc[hi]-s->arc[lo], b=(arc-s->arc[lo])/h,a=1-b;
-    AlulaPoint d0=s->second[lo],d1=s->second[hi];
-    AlulaPoint shape=add(scale(d0,a*a*a-a),scale(d1,b*b*b-b));
-    *p=add(add(scale(s->points[lo],a),scale(s->points[hi],b)),scale(shape,h*h/6));
-    *t=add(scale(sub(s->points[hi],s->points[lo]),1/h),
-        scale(add(scale(d0,1-3*a*a),scale(d1,3*b*b-1)),h/6));
-    *dd=add(scale(d0,a),scale(d1,b));
-}
-
 static int wall_node(const AlulaBodyCoordinates *c,int b,int side,int station,double stag,
     Node *raw,Node *displaced,int deriv)
 {
     const Surface *s=c->surfaces+b;
-    double end=s->arc[s->n-1],f=s->fraction[side][station];
+    double end=s->curve.arc[s->curve.count-1],f=s->fraction[side][station];
     double arc=side ? (1-f)*stag : stag+f*(end-stag);
     if(f==1) arc=side?0:end;
     AlulaPoint p,t,dd;
-    spline(s,arc,&p,&t,&dd);
+    alula_contour_spline_value(&s->curve,arc,&p,&t,&dd);
     *raw=(Node){.p=p};
     double slope=(1-f)*end;
     if(deriv) term(raw,c->stag[b],scale(t,slope));
@@ -260,7 +220,7 @@ static int coordinates(const AlulaBodyCoordinates *c,const double *x,int derivat
     double stag[MAX_BODIES];
     for(int g=0;g<top;++g) {
         const Surface *s=c->surfaces+g;
-        double length=s->arc[s->n-1];
+        double length=s->curve.arc[s->curve.count-1];
         stag[g]=s->stagnation+(c->stag[g]>=0 ? length*x[c->stag[g]] : 0);
         if(!(stag[g]>0 && stag[g]<length)) return 0;
         for(int side=0;side<2;++side)
@@ -296,7 +256,7 @@ static int coordinates(const AlulaBodyCoordinates *c,const double *x,int derivat
     for(int g=0;g<top;++g) {
         int te=b->cuts[g].trailing,a=wall_id(c,g,te,0),z=wall_id(c,g,te,1);
         const Surface *s=c->surfaces+g;
-        AlulaPoint ref=s->material ? sub(s->points[0],s->points[s->n-1]) : (AlulaPoint){0};
+        AlulaPoint ref=s->material ? sub(s->curve.points[0],s->curve.points[s->curve.count-1]) : (AlulaPoint){0};
         Node center={0};
         combine(&center,c->wall+a,.5);combine(&center,c->wall+z,.5);
         AlulaPoint translation=sub(center.p,mean(c->raw[a].p,c->raw[z].p));
@@ -557,6 +517,97 @@ AlulaBodyChart alula_body_coordinates_chart(AlulaBodyCoordinates *c)
 int alula_body_coordinates_stagnation_column(const AlulaBodyCoordinates *c,int body)
 {
     return c && body>=0 && body<c->body->in.bodies ? c->stag[body] : -1;
+}
+
+void alula_body_coordinates_seed_circulation(const AlulaBodyCoordinates *c,double *x,double circulation)
+{
+    if (c && x && isfinite(circulation)) x[c->strength[0]]=circulation/c->scale;
+}
+
+int alula_body_coordinates_surface(const AlulaBodyCoordinates *c,const double *x,int element,
+    int upper,AlulaBodySurfaceView *view)
+{
+    if (!c || !x || !view || element<0 || element>=c->body->in.bodies || (upper!=0 && upper!=1)) return 0;
+    const Surface *s=c->surfaces+element;
+    double arc=s->curve.arc[s->curve.count-1];
+    double position=s->stagnation+(c->stag[element]>=0?arc*x[c->stag[element]]:0);
+    if (!(position>0 && position<arc)) return 0;
+    *view=(AlulaBodySurfaceView){&s->curve,s->fraction[upper],position,s->stagnation};
+    return 1;
+}
+
+size_t alula_body_coordinates_displacement_count(const AlulaBodyCoordinates *c)
+{
+    if (!c || !c->body->in.displaced) return 0;
+    const AlulaBody *b=c->body;
+    size_t n=0;
+    for (int i=0;i<b->in.bodies;++i)
+        n+=(size_t)(2*c->surfaces[i].stations+b->in.nx-b->cuts[i].trailing);
+    return n;
+}
+
+int alula_body_coordinates_get_displacement(const AlulaBodyCoordinates *c,double *value)
+{
+    if (!c || !value || !c->body->in.displaced) return 0;
+    const AlulaBody *b=c->body;
+    for (int i=0;i<b->in.bodies;++i) {
+        const Surface *s=c->surfaces+i;
+        int nw=b->in.nx-b->cuts[i].trailing;
+        for (int side=0;side<2;++side) {
+            memcpy(value,s->thickness[side],(size_t)s->stations*sizeof *value);
+            value+=s->stations;
+        }
+        memcpy(value,s->width,(size_t)nw*sizeof *value);
+        value+=nw;
+    }
+    return 1;
+}
+
+int alula_body_coordinates_set_displacement(AlulaBodyCoordinates *c,const double *values)
+{
+    if (!c || !values || !c->body->in.displaced) return 0;
+    const AlulaBody *b=c->body;
+    const double *check=values;
+    for (int i=0;i<b->in.bodies;++i) {
+        int ns=c->surfaces[i].stations,n=2*ns+b->in.nx-b->cuts[i].trailing;
+        if (check[0]!=check[ns]) return 0;
+        for (int k=0;k<n;++k) if (!(check[k]>=0) || !isfinite(check[k])) return 0;
+        check+=n;
+    }
+    for (int i=0;i<b->in.bodies;++i) {
+        Surface *s=c->surfaces+i;
+        int nw=b->in.nx-b->cuts[i].trailing;
+        for (int side=0;side<2;++side) {
+            memcpy(s->thickness[side],values,(size_t)s->stations*sizeof *values);
+            values+=s->stations;
+        }
+        memcpy(s->width,values,(size_t)nw*sizeof *values);
+        values+=nw;
+    }
+    return 1;
+}
+
+size_t alula_body_coordinates_checkpoint_count(const AlulaBodyCoordinates *c)
+{
+    return c ? (size_t)c->body->size.nodes+(size_t)(c->offset-c->body->size.density) : 0;
+}
+
+int alula_body_coordinates_save(const AlulaBodyCoordinates *c,AlulaPoint *checkpoint)
+{
+    if (!c || !checkpoint) return 0;
+    int n=c->body->size.nodes,normals=c->offset-c->body->size.density;
+    memcpy(checkpoint,c->origin,(size_t)n*sizeof *checkpoint);
+    memcpy(checkpoint+n,c->normal,(size_t)normals*sizeof *checkpoint);
+    return 1;
+}
+
+int alula_body_coordinates_restore(AlulaBodyCoordinates *c,const AlulaPoint *checkpoint)
+{
+    if (!c || !checkpoint) return 0;
+    int n=c->body->size.nodes,normals=c->offset-c->body->size.density;
+    memcpy(c->origin,checkpoint,(size_t)n*sizeof *checkpoint);
+    memcpy(c->normal,checkpoint+n,(size_t)normals*sizeof *checkpoint);
+    return 1;
 }
 
 void alula_body_coordinates_free(AlulaBodyCoordinates *c)

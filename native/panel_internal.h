@@ -13,6 +13,14 @@ typedef struct {
     size_t node;
 } Panel;
 
+typedef struct {
+    Panel geometry;
+    AlulaPoint end, cut_origin, cut_direction;
+    AlulaPoint tangential;
+    size_t output, body, last_node;
+    double source, vortex, log_length;
+} Segment;
+
 typedef struct { double cx, cy, cm; } Loads;
 typedef struct { double xx, xy, yy; } Pressure;
 
@@ -22,6 +30,17 @@ struct AlulaPanelSystem {
     double gx, gy;
     Loads loads[3];
     Pressure *pressure;
+    Segment *segments;
+    double *responses;
+    AlulaPoint boundary_psi[6];
+    size_t wetted, response_size, bodies;
+    int dirichlet;
+};
+
+struct AlulaPanelField {
+    const AlulaPanelSystem *system;
+    AlulaPoint freestream;
+    AlulaPoint strengths[];
 };
 
 static inline double dot(AlulaPoint a, AlulaPoint b)
@@ -49,6 +68,8 @@ void alula_panel_integrate(AlulaPanelSystem *system, size_t index, const Panel *
     Pressure p, Pressure gradient, double chord, AlulaPoint moment);
 int alula_panel_factor(double *a, double *b, size_t n);
 void alula_panel_vortex(AlulaPoint point, const Panel *p, int self, AlulaPoint q[2]);
+void alula_panel_vortex_psi(AlulaPoint point, const Segment *s, double q[2]);
+double alula_panel_base_psi(AlulaPoint point, const Segment *s, double source, double vortex);
 AlulaPanelSystem *alula_panel_prepare_streamfunction(const AlulaContour *contours,
     size_t count, size_t total, double chord, AlulaPoint moment);
 
