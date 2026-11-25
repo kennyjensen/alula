@@ -17,16 +17,18 @@ typedef struct {
 
 typedef struct {
     AlulaCoupledStatus status;
-    int iterations,backtracks,euler_updates;
-    double displacement_residual,bl_residual;
+    int iterations,backtracks,euler_updates,used_interaction;
+    int used_local_interaction,euler_rejections,bl_rejections,merit_rejections;
+    double displacement_residual,bl_residual,edge_residual;
     AlulaBodySolveResult euler;
     AlulaAirfoilBL *profiles; /* Owned by the caller. */
 } AlulaCoupledResult;
 
 /* Converge the displacement feedback by alternating Euler and BL solves.
  * The caller supplies an already converged Euler grid. Displacement
- * tolerance is in reference chords. Failed attempts restore the last
- * accepted geometry, Euler state, and displacement. */
+ * tolerance is in reference chords, and gives the edge matching tolerance
+ * in freestream speed units. Failed attempts restore the last accepted
+ * geometry, Euler state, and displacement. */
 AlulaCoupledResult alula_airfoil_coupled_solve(AlulaAirfoilGrid *grid,const AlulaCoupledControls *controls);
 
 #endif

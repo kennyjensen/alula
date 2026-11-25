@@ -46,6 +46,11 @@ static int positive_simple(const AlulaPoint *vertices, int n)
         p[i]=sub(vertices[i],vertices[0]);
         if (!finite_point(p[i])) return 0;
     }
+    /* Strictly convex quadrilaterals are simple. Keep intersection checks
+     * for bent cells and the six-sided control volume. */
+    if (n==4 && positive(orient(p[0],p[1],p[2])) && positive(orient(p[1],p[2],p[3])) &&
+        positive(orient(p[2],p[3],p[0])) && positive(orient(p[3],p[0],p[1])) &&
+        positive(cross(p[1],p[2])+cross(p[2],p[3]))) return 1;
     double area=0;
     for (int i=0; i<n; ++i) {
         AlulaPoint a=p[i], b=p[(i+1)%n], c=p[(i+2)%n];

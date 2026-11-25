@@ -87,10 +87,30 @@ native/alula-euler --topology --mesh-only 2.68 0.74 6 4 < contours.txt
 `airfoil_grid.h` exposes grid setup, the moving-grid solve, and the current
 nodes, density, passage mass flow, and farfield strengths. The startup grid
 uses contour splines and panel-guided boundaries with interpolated interior
-cross-lines. Bounded vertex repair preserves the solid and guide boundaries.
-The contour-to-Euler checks include coarse NACA 2412 and stacked NACA 0012
-cases, a coarse transonic RAE 2822 solve, and the starting grid for NLR 7301
-with flap.
+crosslines. If they fold on a rounded nose, a second construction traces
+interior streamlines and aligns them by relative velocity potential.
+Retries with gentler surface spacing reuse the off-body guides and their
+sampled potentials.
+`--potential-grid` selects this construction immediately. The default CLI
+also retries it if the Euler solve stalls on an algebraic grid. The report
+identifies the active `crosslines` method. Bounded vertex repair preserves
+the solid and guide boundaries. If an isentropic seed has a nonpositive
+interface pressure, the initializer first raises density locally and keeps
+the rest of the seed. Grid tests cover NLR 7301 with flap and RAE 2822 with
+64 surface intervals and up to 24 tubes per passage. The finer RAE 2822
+Euler solve takes updates but stalls when cells near the nose collapse.
+
+Use `--coarse-start N` to solve an inviscid grid at a lower surface
+resolution with at most four tubes per passage, then seed the requested
+grid with its geometry, density, stagnation locations, and farfield
+strengths. The target keeps its own wall spline and resolution. The JSON
+field `coarseStartApplied` gives the transfer status, and `converged`
+describes the requested grid. For RAE 2822, the 16-interval Euler solve
+converges with an eight-interval seed:
+
+```sh
+native/alula-euler --topology --potential-grid --coarse-start 8 2.68 .74 16 4 < rae-contour.txt
+```
 
 `alula-euler --bl RE NCRIT` marches the integral boundary layer and merged
 wake on the converged Euler edge speeds. The report includes completed
@@ -98,17 +118,38 @@ stations, transition locations, and terminal thicknesses for each branch.
 `--coupled RE NCRIT` alternates between the boundary-layer march and a warm
 Euler solve on the displaced grid. It checks the Euler and boundary-layer
 residuals and requires the displacement thickness to agree within 1e-8
-reference chords. The report gives lift and moment from surface pressure,
-along with separate pressure and viscous wake drag estimates.
+reference chords and the edge speeds within 1e-8 times freestream speed.
+If the fixed-edge start stalls, the coupled mode can seed a separated
+surface by solving for its edge speed at a prescribed shape, then iterate
+with a displacement-based interaction law and Anderson acceleration. When
+that march stalls, the solver can retain Euler edge speeds upstream of the
+first failed turbulent interval and activate interaction from that interval
+onward. The wake can also retry a failed interval with interaction, and its
+edge-speed mismatch counts toward convergence. The JSON report counts
+rejected steps by Euler failure, boundary-layer failure, and insufficient
+reduction in the coupling error. It also gives lift and moment from
+surface pressure and separate pressure and viscous wake drag estimates.
 
 ```sh
 native/alula-euler --topology --bl 1000000 9 0 0.1 8 4 < contours.txt
 native/alula-euler --topology --coupled 1000000 9 0 0.1 8 4 < contours.txt
 ```
 
-Coupled checks cover coarse subsonic sharp and finite-base NACA 2412 and
-stacked NACA 0012. The direct march can stop in adverse pressure gradients,
-including during coupled startup for the coarse transonic RAE 2822 case.
+Use one `--trip UPPER LOWER` pair per contour, in input order, to prescribe
+material surface fractions. A fraction of one selects natural transition
+with terminal wake initialization. Coupled checks cover coarse subsonic
+sharp and finite-base NACA 2412, stacked NACA 0012, the built-in main
+element and flap with 20% material trips, and transonic RAE 2822 with trips
+at six and eight surface intervals. This example checks convergence on a
+startup grid:
+
+```sh
+native/alula-euler --topology --potential-grid --coupled 2700000 4 --trip .03 .07 2.68 .74 8 4 < rae-contour.txt
+```
+
+With 16 surface intervals and `--coarse-start 8`, the RAE 2822 Euler solve
+converges. The coupled solve returns complete provisional profiles when
+the line search stalls before the displacement and edge speeds agree.
 
 `bl.h` exposes similarity, laminar, mixed transition, turbulent and wake
 residuals and fixed-edge profile initialization. The C equations are
@@ -123,7 +164,11 @@ streamline positions together, with free tube masses for reservoir inflow
 and static-pressure outflow. It uses the existing
 [SuiteSparse KLU sources](../third_party/klu/README.md), reuses symbolic
 analysis and numerical factor storage, and verifies each linear solution
-against the original matrix.
+against the current matrix. If the previous factors produce contracting
+corrections, it can finish a linear solve without refactorization. The
+Euler JSON report gives the factor, refactor, and reuse counts. Refinement
+uses extended-precision residuals when double-precision products cannot
+meet the linear tolerance.
 
 The body API evaluates the same pressure matching, edge conditions,
 farfield modes, wake gaps, and ISMOM choices as the compressible web solver

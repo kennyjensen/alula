@@ -156,6 +156,7 @@ static AlulaBodyStatus prepare(AlulaBody *b,const AlulaBodyState *s,double *max_
 #pragma omp parallel for schedule(static) reduction(|:bad) if(nx*nt>1024)
 #endif
     for (int i=1;i<nx;++i) for (int g=0;g<=bodies;++g) for (int j=0;j<b->tubes[g];++j) {
+        if (bad) break;
         int k=index_section(b,g,i-1,j);
         AlulaCellInput p={.density={s->density[k],s->density[k+nt]},.mass=s->mass[b->column[g]+j],
             .h0=b->h0,.gamma=b->in.gamma,.correction=b->in.correction,.positive_simple=b->in.positive_simple};
@@ -192,6 +193,7 @@ static AlulaBodyStatus prepare(AlulaBody *b,const AlulaBodyState *s,double *max_
 #pragma omp parallel for schedule(static) reduction(|:bad) if(nx*nt>1024)
 #endif
     for (int k=0;k<(nx-1)*nt;++k) {
+        if (bad) continue;
         AlulaCell *c=b->cells+k;
         if (b->in.upwind) {
             c->input.biased=1;

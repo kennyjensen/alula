@@ -34,6 +34,11 @@ AlulaBodyChart alula_body_coordinates_chart(AlulaBodyCoordinates *coordinates);
 int alula_body_coordinates_stagnation_column(const AlulaBodyCoordinates *coordinates,int body);
 void alula_body_coordinates_seed_circulation(const AlulaBodyCoordinates *coordinates,
     double *packed,double circulation);
+/* The caller checkpoints packed variables and origins before installing a
+ * candidate seed. The material wall locations keep their contour constraint. */
+int alula_body_coordinates_seed_state(AlulaBodyCoordinates *coordinates,double *packed,
+    const double *stagnation,const double *passage_mass,const AlulaBodyState *source);
+int alula_body_coordinates_seed_nodes(AlulaBodyCoordinates *coordinates,double *packed,const AlulaPoint *nodes);
 typedef struct {
     const AlulaContourSpline *curve;
     const double *fractions;

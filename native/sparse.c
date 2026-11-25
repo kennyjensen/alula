@@ -2,6 +2,7 @@
 #include "sparse.h"
 #include "klu.h"
 
+#include <float.h>
 #include <limits.h>
 #include <math.h>
 #include <stdlib.h>
@@ -11,6 +12,7 @@ struct AlulaSparse {
     int n, nnz;
     int *starts, *rows;
     double *values, *work, *scale;
+    long double *wide;
     klu_common common;
     klu_symbolic *symbolic;
     klu_numeric *numeric;
@@ -100,12 +102,80 @@ static double relative_residual(AlulaSparse *m, const double *rhs, const double 
     return bnorm > 0 ? error/bnorm : error;
 }
 
+/* Compensation corrects addition error, but products rounded to double can
+ * still swamp the Newton RHS when large terms cancel. Refine those solves
+ * using wider products and sums of the original entries. */
+static double wide_residual(AlulaSparse *m,const double *rhs,const double *x)
+{
+    double bnorm=0,error=0;
+    for (int i=0;i<m->n;++i) {
+        m->wide[i]=rhs[i];
+        bnorm=fmax(bnorm,fabs(rhs[i]));
+    }
+    for (int j=0;j<m->n;++j) {
+        if (!isfinite(x[j])) return INFINITY;
+        for (int k=m->starts[j];k<m->starts[j+1];++k)
+            m->wide[m->rows[k]]-=(long double)m->values[k]*x[j];
+    }
+    for (int i=0;i<m->n;++i) {
+        m->work[i]=(double)m->wide[i];
+        if (!isfinite(m->work[i])) return INFINITY;
+        error=fmax(error,fabs(m->work[i]));
+    }
+    return bnorm>0?error/bnorm:error;
+}
+
+static const double linear_tolerance=1e-10;
+
+static int prepare_wide(AlulaSparse *m)
+{
+    if (LDBL_MANT_DIG<=DBL_MANT_DIG) return 0;
+    if (!m->wide) m->wide=malloc((size_t)m->n*sizeof *m->wide);
+    return m->wide!=NULL;
+}
+
+static int correct(AlulaSparse *m,double *x)
+{
+    if (!klu_solve(m->symbolic,m->numeric,m->n,1,m->work,&m->common)) return 0;
+    for (int i=0;i<m->n;++i) x[i]+=m->work[i];
+    return 1;
+}
+
+static void record_solve(AlulaSparse *m,double e)
+{
+    m->stats.max_relative_residual=fmax(m->stats.max_relative_residual,e);
+    m->stats.factor_nonzeros=m->numeric->lnz+m->numeric->unz-m->n+m->numeric->nzoff;
+}
+
+/* Use the previous factors as a preconditioner for the current matrix.
+ * A small number of contracting corrections can be much cheaper than
+ * refactorization. The residual always uses the newly assembled matrix. */
+static int reuse_factors(AlulaSparse *m,const double *rhs,double *x)
+{
+    memcpy(x,rhs,(size_t)m->n*sizeof *x);
+    if (!klu_solve(m->symbolic,m->numeric,m->n,1,x,&m->common)) return 0;
+    double previous=INFINITY;
+    for (int i=0;i<=6;++i) {
+        double e=relative_residual(m,rhs,x);
+        if (e>linear_tolerance && e<1e-7 && prepare_wide(m)) e=wide_residual(m,rhs,x);
+        if (e<=linear_tolerance) {
+            record_solve(m,e);
+            ++m->stats.factor_reuses;
+            return 1;
+        }
+        if (i==6 || !isfinite(e) || e>.5*previous || !correct(m,x)) break;
+        previous=e;
+    }
+    return 0;
+}
+
 int alula_sparse_solve(AlulaSparse *m, const double *rhs, double *x)
 {
     if (!m || !rhs || !x || rhs == x) return 0;
     for (int k=0; k<m->nnz; ++k) if (!isfinite(m->values[k])) return 0;
     for (int i=0; i<m->n; ++i) if (!isfinite(rhs[i])) return 0;
     int reuse=m->numeric != NULL;
+    if (reuse && reuse_factors(m,rhs,x)) return 1;
     for (int attempt=0; attempt<=reuse; ++attempt) {
         int refactor=reuse && attempt == 0;
         if (refactor) {
@@ -121,14 +191,14 @@ int alula_sparse_solve(AlulaSparse *m, const double *rhs, double *x)
         memcpy(x,rhs,(size_t)m->n*sizeof *x);
         if (!klu_solve(m->symbolic,m->numeric,m->n,1,x,&m->common)) continue;
         double e=relative_residual(m,rhs,x);
-        for (int refine=0; refine<3 && isfinite(e) && e>1e-10; ++refine) {
-            if (!klu_solve(m->symbolic,m->numeric,m->n,1,m->work,&m->common)) break;
-            for (int i=0; i<m->n; ++i) x[i]+=m->work[i];
-            e=relative_residual(m,rhs,x);
+        int use_wide=e>linear_tolerance && prepare_wide(m);
+        if (use_wide) e=wide_residual(m,rhs,x);
+        for (int refine=0; refine<3 && isfinite(e) && e>linear_tolerance; ++refine) {
+            if (!correct(m,x)) break;
+            e=use_wide?wide_residual(m,rhs,x):relative_residual(m,rhs,x);
         }
-        if (e <= 1e-10) {
-            m->stats.max_relative_residual=fmax(m->stats.max_relative_residual,e);
-            m->stats.factor_nonzeros=m->numeric->lnz+m->numeric->unz-m->n+m->numeric->nzoff;
+        if (e<=linear_tolerance) {
+            record_solve(m,e);
             return 1;
         }
     }
@@ -143,5 +213,5 @@ void alula_sparse_free(AlulaSparse *m)
     klu_free_numeric(&m->numeric,&m->common);
     klu_free_symbolic(&m->symbolic,&m->common);
     free(m->starts); free(m->rows); free(m->values); free(m->work); free(m->scale);
-    free(m);
+    free(m->wide); free(m);
 }

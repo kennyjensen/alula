@@ -21,8 +21,8 @@ function native(p, mode, initial, direction, iterations=40) {
     Array.from(initial), ...(direction ? [Array.from(direction)] : []),
   ].map(row=>row.join(' ')).join('\n')+'\n';
   const rows=execFileSync(binary,{input,encoding:'utf8'}).trim().split('\n').map(row=>row.split(' ').map(Number));
-  const [status,count,backtracks,residual,maxMach,nonzeros,factorNonzeros,factors,refactors,relativeLinearResidual,ms]=rows.at(-2);
-  return {status,count,backtracks,residual,maxMach,nonzeros,factorNonzeros,factors,refactors,relativeLinearResidual,ms,
+  const [status,count,backtracks,residual,maxMach,nonzeros,factorNonzeros,factors,refactors,relativeLinearResidual,ms,reuses]=rows.at(-2);
+  return {status,count,backtracks,residual,maxMach,nonzeros,factorNonzeros,factors,refactors,relativeLinearResidual,ms,reuses,
     x:rows.at(-1), ...(direction ? {r:rows[0],jv:rows[1]} : {})};
 }
 
@@ -48,10 +48,10 @@ function verify(p,mode,system,initial,label) {
   assert.equal(b.converged,true,b.reason);
   assert.equal(a.status,0,`${label}: residual ${a.residual}, updates ${a.count}, factors ${a.factors}`);
   assert.ok(a.residual<=1e-10 && a.relativeLinearResidual<1e-10);
-  assert.ok(a.factors>=1 && (a.count<2 || a.refactors>=1));
+  assert.ok(a.factors>=1 && (a.count<2 || a.refactors+a.reuses>=1));
   assert.ok(a.nonzeros<35*system.n);
   close(a.x,b.x,3e-8,label+' converged state');
-  console.log(`${label}: ${system.n} unknowns, ${a.count} updates, ${a.refactors} KLU refactors, max Mach ${a.maxMach.toFixed(3)}, C ${a.ms.toFixed(1)} ms / JS ${js.toFixed(1)} ms`);
+  console.log(`${label}: ${system.n} unknowns, ${a.count} updates, ${a.refactors} refactors, ${a.reuses} factor reuses, max Mach ${a.maxMach.toFixed(3)}, C ${a.ms.toFixed(1)} ms / JS ${js.toFixed(1)} ms`);
   return a;
 }
 

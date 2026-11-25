@@ -3,9 +3,11 @@
 #include "body_newton.h"
 #include "body_chart.h"
 
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 static int read_vector(double *v,int n)
@@ -85,9 +87,9 @@ static int run_newton(AlulaBody *b,const AlulaBodyState *state)
     double t=milliseconds();
     AlulaBodySolveResult result=alula_body_newton_solve(solver,x,iterations,tolerance);
     double elapsed=milliseconds()-t;
-    printf("%d %d %d %d %.17g %.17g %.17g %d %d %.17g\n",result.status,result.iterations,result.backtracks,
+    printf("%d %d %d %d %.17g %.17g %.17g %d %d %.17g %d\n",result.status,result.iterations,result.backtracks,
         result.colors,result.norm,result.max_mach,elapsed,result.linear.factor_count,result.linear.refactor_count,
-        result.linear.max_relative_residual);
+        result.linear.max_relative_residual,result.linear.factor_reuses);
     for (int i=0;i<s.rows;++i) printf("%.17g%c",x[i],i==s.rows-1?'\n':' ');
     ret=0;
 done:
@@ -169,8 +171,53 @@ done:
     return ret;
 }
 
-int main(void)
+static int check_sparse_cancellation(void)
 {
+    if (LDBL_MANT_DIG<=DBL_MANT_DIG) return 0;
+    const AlulaSparseEntry entries[]={{0,0},{1,0},{0,1},{1,1}};
+    const double values[]={0x1.cc35e34ep+0,0x1.465a9254p+0,0x1.cc35de09be825p+0,0x1.465a995bf76f5p+0};
+    const double expected[]={0x1.7d784p+26,-0x1.7d783ff721e2ep+26};
+    const double rhs[]={0x1.fa3ff0752d4d9p+4,-0x1.4ddb5844e5a4bp+5};
+    AlulaSparse *m=alula_sparse_create(2,entries,4,NULL);
+    if (!m) return 1;
+    memcpy(alula_sparse_values(m),values,sizeof values);
+    double x[2];
+    int ok=alula_sparse_solve(m,rhs,x);
+    if (ok) for (int i=0;i<2;++i) {
+        long double residual=(long double)rhs[i]-(long double)values[i]*x[0]-(long double)values[i+2]*x[1];
+        if (fabsl(residual)>1e-10*fabs(rhs[i]) || fabs(x[i]-expected[i])>.01) ok=0;
+    }
+    alula_sparse_free(m);
+    if (!ok) fputs("Sparse cancellation regression failed.\n",stderr);
+    return ok?0:1;
+}
+
+static int check_sparse_reuse(void)
+{
+    const AlulaSparseEntry entries[]={{0,0},{1,1}};
+    const double rhs[]={2,4};
+    AlulaSparse *m=alula_sparse_create(2,entries,2,NULL);
+    if (!m) return 1;
+    double *a=alula_sparse_values(m),x[2];
+    a[0]=2;a[1]=4;
+    int ok=alula_sparse_solve(m,rhs,x);
+    a[0]=2.002;
+    ok=ok && alula_sparse_solve(m,rhs,x) && fabs(a[0]*x[0]-rhs[0])<=4e-10 && x[1]==1;
+    AlulaSparseStats refined=alula_sparse_stats(m);
+    a[0]=8;
+    ok=ok && alula_sparse_solve(m,rhs,x) && x[0]==.25 && x[1]==1;
+    AlulaSparseStats refactored=alula_sparse_stats(m);
+    ok=ok && refined.factor_reuses==1 && refined.refactor_count==0 &&
+        refactored.factor_reuses==1 && refactored.refactor_count==1;
+    alula_sparse_free(m);
+    if (!ok) fputs("Sparse factor reuse regression failed.\n",stderr);
+    return ok?0:1;
+}
+
+int main(int argc,char **argv)
+{
+    if (argc==2 && !strcmp(argv[1],"--check-sparse"))
+        return check_sparse_cancellation() || check_sparse_reuse();
     AlulaBodyInput in={0};
     int mode, repeat, jacobian, tubes[7];
     AlulaBodyCut cuts[6];

@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { naca4, naca4Standard, transform } from '../src/geometry/airfoil.js';
+import { prepareAirfoilElement } from '../src/geometry/airfoil-element.js';
 import { getBenchmarkAirfoil } from '../src/geometry/benchmark-airfoils.js';
+import { builtinAirfoils } from '../src/geometry/builtin-airfoils.js';
 
 const binary = fileURLToPath(new URL('./alula-euler', import.meta.url));
 const sharp = { points: naca4('2412', 160) };
@@ -68,6 +70,91 @@ for (const c of cases) {
   }
 }
 
+const raeInput = encode(cases.find(c => c.transonic).elements);
+const refined = spawnSync(binary, ['--topology', '--potential-grid', '--coarse-start', '8',
+  '2.68', '.74', '16', '4'], { input: raeInput, encoding: 'utf8' });
+assert.equal(refined.status, 0, refined.stderr + refined.stdout);
+const refinedEuler = JSON.parse(refined.stdout);
+assert.equal(refinedEuler.coarseStartApplied, true);
+assert.equal(refinedEuler.intervals, 40);
+assert.equal(refinedEuler.converged, true);
+assert.equal(refinedEuler.invalidCells, 0);
+assert.ok(refinedEuler.residual <= 1e-9 && refinedEuler.maxMach > 1.1);
+
+const refinedViscous = spawnSync(binary, ['--topology', '--potential-grid', '--coarse-start', '8',
+  '--coupled', '2700000', '4', '--trip', '.03', '.07', '2.68', '.74', '16', '4'], {
+  input: raeInput, encoding: 'utf8',
+});
+const refinedCoupled = JSON.parse(refinedViscous.stdout);
+assert.equal(refinedViscous.status, refinedCoupled.converged ? 0 : 1);
+assert.equal(refinedCoupled.coarseStartApplied, true);
+assert.equal(refinedCoupled.solveStatus, 0);
+assert.equal(refinedCoupled.boundaryLayer.complete, true);
+const coupling = refinedCoupled.coupled;
+assert.ok(coupling.updates > 0 && coupling.blResidual <= 1e-9);
+assert.equal(Object.values(coupling.rejections).reduce((sum, count) => sum + count, 0), coupling.backtracks);
+if (refinedCoupled.converged) {
+  assert.ok(coupling.displacementResidual <= 1e-8 && coupling.edgeResidual <= 1e-8);
+} else {
+  assert.equal(coupling.usedLocalInteraction, true);
+  assert.equal(refinedCoupled.boundaryLayer.edgeSource, 'interaction-iterate');
+  assert.ok(coupling.edgeResidual < .25);
+}
+
+for (const [intervals, crosslines] of [['6', 'algebraic'], ['8', 'potential']]) {
+  const rae = spawnSync(binary, ['--topology', '--coupled', '2700000', '4', '--trip', '.03', '.07',
+    '2.68', '.74', intervals, '4'], { input: raeInput, encoding: 'utf8' });
+  assert.equal(rae.status, 0, rae.stderr + rae.stdout);
+  const transonic = JSON.parse(rae.stdout);
+  assert.equal(transonic.converged, true);
+  assert.equal(transonic.crosslines, crosslines);
+  assert.equal(transonic.coupled.usedInteraction, true);
+  assert.ok(transonic.maxMach > 1.1 && transonic.residual <= 1e-9);
+  assert.ok(transonic.coupled.blResidual <= 1e-9);
+  assert.ok(transonic.coupled.displacementResidual <= 1e-8);
+  assert.ok(transonic.coupled.edgeResidual <= 1e-8);
+  assert.equal(transonic.boundaryLayer.complete, true);
+  assert.ok(transonic.boundaryLayer.profiles[0].transitionS < transonic.boundaryLayer.profiles[1].transitionS);
+  assert.ok(transonic.viscousWakeDrag > 0);
+}
+
+for (const tubes of ['4', '24']) {
+  const fine = spawnSync(binary, ['--topology', '--potential-grid', '--mesh-only', '2.68', '.74', '64', tubes], {
+    input: raeInput, encoding: 'utf8',
+  });
+  assert.equal(fine.status, 0, fine.stderr + fine.stdout);
+  const report = JSON.parse(fine.stdout);
+  assert.equal(report.crosslines, 'potential');
+  assert.equal(report.invalidCells, 0);
+  assert.equal(report.flowSeedStatus, 0);
+  assert.ok(report.intervals > 64 && report.minimumCornerSine > .001);
+}
+
+const flapInput = encode(builtinAirfoils.flap.map(p =>
+  prepareAirfoilElement({ points: transform(naca4Standard(p.code, 160), p) })));
+for (const coarseArgs of [[], ['--potential-grid', '--coarse-start', '7']]) {
+  const flapped = spawnSync(binary, ['--topology', ...coarseArgs, '--coupled', '1000000', '9',
+    '--trip', '.2', '.2', '--trip', '.2', '.2', '4', '.2', '8', '4'], { input: flapInput, encoding: 'utf8' });
+  assert.equal(flapped.status, 0, flapped.stderr + flapped.stdout);
+  const flapResult = JSON.parse(flapped.stdout);
+  assert.equal(flapResult.converged, true);
+  if (coarseArgs.length) assert.equal(flapResult.coarseStartApplied, true);
+  assert.ok(flapResult.wakeWidths > 0 && flapResult.viscousWakeDrag > 0);
+  assert.ok(flapResult.residual <= 1e-9 && flapResult.coupled.blResidual <= 1e-9);
+  assert.ok(flapResult.coupled.displacementResidual <= 1e-8 && flapResult.coupled.edgeResidual <= 1e-8);
+  assert.equal(flapResult.boundaryLayer.complete, true);
+  assert.equal(flapResult.boundaryLayer.profiles.length, 6);
+}
+
+const trippedAssembly = spawnSync(binary, ['--topology', '--bl', '1000000', '20',
+  '--trip', '.2', '.3', '--trip', '.5', '.6', '0', '.1', '6', '4'], {
+  input: encode(stacked.slice().reverse()), encoding: 'utf8',
+});
+assert.equal(trippedAssembly.status, 0, trippedAssembly.stderr + trippedAssembly.stdout);
+const [lowerUpper, lowerLower, , upperUpper, upperLower] = JSON.parse(trippedAssembly.stdout).boundaryLayer.profiles;
+assert.ok(lowerUpper.transitionS > upperUpper.transitionS + .1);
+assert.ok(lowerLower.transitionS > upperLower.transitionS + .1);
+
 const mesh = spawnSync(binary, ['--topology', '--mesh-only', '6', '.185', '8', '4'], {
   input: encode(getBenchmarkAirfoil('nlr7301').elements), encoding: 'utf8',
 });
@@ -83,4 +170,4 @@ const rejected = spawnSync(binary, ['--topology', '0', '.1'], {
 });
 assert.equal(rejected.status, 1);
 assert.equal(JSON.parse(rejected.stdout).converged, undefined);
-console.log('Native contour-to-Euler passed for four solves and the NLR 7301 start grid. Three cases passed fixed-edge and coupled BL checks.');
+console.log('Native airfoil checks passed for coarse coupled cases, the refined 16-interval RAE 2822 Euler solve, and the fine RAE 2822 and NLR 7301 start grids.');

@@ -41,7 +41,8 @@ static double wake_width(const AlulaBodySurfaceView *surface,double width,double
 }
 
 static void march_body(AlulaAirfoilBL *p,AlulaAirfoilGrid *g,const AlulaBLContext *ctx,
-    const AlulaBodyState *state,int e,const double *trips,AlulaBLEdge *edges,size_t *offset)
+    const AlulaBodyState *state,int e,const double *trips,AlulaBLEdge *edges,size_t *offset,
+    const double *displacement,double *interaction,int local)
 {
     const AlulaBody *b=g->body;
     AlulaBodyCut cut=b->cuts[e];
@@ -72,7 +73,10 @@ static void march_body(AlulaAirfoilBL *p,AlulaAirfoilGrid *g,const AlulaBLContex
         double trip=fraction<1?sign*(alula_contour_arc(s.curve,arc,trip_parameter)-stagnation)/scale:edges[ns-1].s;
         AlulaAirfoilBLBranch *surface=&p->branches[e][side];
         size_t start=(size_t)(surface->stations-p->stations);
-        surface->result=alula_bl_march_surface(ctx,edges,ns,trip,1,p->stations+start,p->regimes+start);
+        if (displacement) for (size_t i=0;i<ns;++i)
+            interaction[i]=displacement[(upper?ns+1:0)+1+i]/scale;
+        surface->result=alula_bl_march_surface_controlled(ctx,edges,ns,trip,1,
+            displacement?interaction:NULL,local,p->stations+start,p->regimes+start);
     }
     const AlulaAirfoilBLBranch *upper=&p->branches[e][ALULA_BL_UPPER];
     const AlulaAirfoilBLBranch *lower=&p->branches[e][ALULA_BL_LOWER];
@@ -90,12 +94,15 @@ static void march_body(AlulaAirfoilBL *p,AlulaAirfoilGrid *g,const AlulaBLContex
             .5*(edge_speed(b,e,i,b->tubes[e]-1)+edge_speed(b,e+1,i,0)),wake_width(&s,width,within)/scale};
     }
     size_t start=(size_t)(wake->stations-p->stations);
-    wake->result=alula_bl_march_wake(ctx,upper->stations+ns-1,lower->stations+ns-1,edges,nw,p->stations+start);
+    if (local && displacement) for (size_t j=1;j<nw;++j)
+        interaction[j-1]=displacement[2*(ns+1)+j-1]/scale;
+    wake->result=alula_bl_march_wake_interaction(ctx,upper->stations+ns-1,lower->stations+ns-1,
+        edges,nw,local && displacement?interaction:NULL,p->stations+start);
     for (size_t k=0;k<wake->result.completed;++k) p->regimes[start+k]=ALULA_BL_WAKE;
 }
 
-AlulaAirfoilBL *alula_airfoil_bl_create(AlulaAirfoilGrid *g,double reynolds,double ncrit,
-    const double (*trips)[2])
+AlulaAirfoilBL *alula_airfoil_bl_create_interaction(AlulaAirfoilGrid *g,double reynolds,double ncrit,
+    const double (*trips)[2],const double *displacement,int local)
 {
     AlulaBLContext ctx;
     if (!g || !g->converged || !alula_bl_context(&ctx,reynolds,g->body->in.mach,g->body->in.gamma,ncrit))
@@ -108,9 +115,10 @@ AlulaAirfoilBL *alula_airfoil_bl_create(AlulaAirfoilGrid *g,double reynolds,doub
     }
     AlulaAirfoilBL *p=calloc(1,sizeof *p);
     AlulaBLEdge *edges=malloc((size_t)b->in.nx*sizeof *edges);
+    double *interaction=displacement?malloc((size_t)b->in.nx*sizeof *interaction):NULL;
     double *residual=malloc((size_t)b->size.rows*sizeof *residual);
     AlulaBodyState state;
-    if (!p || !edges || !residual || !alula_airfoil_grid_state(g,&state) ||
+    if (!p || !edges || !residual || (displacement && !interaction) || !alula_airfoil_grid_state(g,&state) ||
         alula_body_residual(b,&state,residual,NULL)!=ALULA_BODY_OK) goto fail;
     p->stations=malloc(count*sizeof *p->stations);
     p->regimes=malloc(count*sizeof *p->regimes);
@@ -120,14 +128,24 @@ AlulaAirfoilBL *alula_airfoil_bl_create(AlulaAirfoilGrid *g,double reynolds,doub
     p->complete=1;
     size_t start=0;
     for (int i=0;i<b->in.bodies;++i) {
-        march_body(p,g,&ctx,&state,i,trips?trips[i]:NULL,edges,&start);
+        march_body(p,g,&ctx,&state,i,trips?trips[i]:NULL,edges,&start,displacement,interaction,local);
+        if (displacement) {
+            AlulaBodyCut cut=b->cuts[i];
+            displacement+=2*(cut.trailing-cut.leading+1)+b->in.nx-cut.trailing;
+        }
         for (int side=0;side<3;++side) if (p->branches[i][side].result.status!=ALULA_BL_OK) p->complete=0;
     }
-    free(edges);free(residual);
+    free(edges);free(residual);free(interaction);
     return p;
 fail:
-    free(edges);free(residual);alula_airfoil_bl_free(p);
+    free(edges);free(residual);free(interaction);alula_airfoil_bl_free(p);
     return NULL;
+}
+
+AlulaAirfoilBL *alula_airfoil_bl_create(AlulaAirfoilGrid *g,double reynolds,double ncrit,
+    const double (*trips)[2])
+{
+    return alula_airfoil_bl_create_interaction(g,reynolds,ncrit,trips,NULL,0);
 }
 
 const AlulaAirfoilBLBranch *alula_airfoil_bl_branch(const AlulaAirfoilBL *p,int body,AlulaBLBranch side)

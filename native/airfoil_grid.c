@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "airfoil_grid_internal.h"
+#include "grid_potential.h"
 #include "grid_relax.h"
 #include "panel_guide.h"
 #include "panel_internal.h"
@@ -103,6 +104,29 @@ static int guide_point(const AlulaPanelGuides *guides,AlulaGuidePath path,
     return 1;
 }
 
+static void surface_points(const AlulaPanelBodyGuide *profiles,const AlulaAirfoilGrid *grid,
+    const double *x,int nx,int count,double *fractions,AlulaPoint *boundaries,int nose_relief)
+{
+    int rows=nx+1;
+    for (int g=0;g<count;++g) {
+        const AlulaPanelBodyGuide *profile=profiles+g;
+        const AlulaContourSpline *curve=profile->curve;
+        AlulaBodyCut cut=grid->cuts[g];
+        AlulaPoint *lower=boundaries+(2*g+1)*rows,*upper=lower+rows;
+        double end=curve->arc[curve->count-1],stag=profile->stagnation;
+        double *f=fractions+(size_t)g*4*rows;
+        for (int i=cut.leading;i<=cut.trailing;++i) {
+            double t=(x[i]-x[cut.leading])/(x[cut.trailing]-x[cut.leading]);
+            /* Relieve the arc clustering around a rounded nose while
+             * retaining the endpoints and trailing-edge spacing. */
+            if (nose_relief) t+=sqrt(t)*(1-t)*(1-t);
+            f[i-cut.leading]=t;
+            alula_contour_spline_value(curve,(1-t)*stag,upper+i,NULL,NULL);
+            alula_contour_spline_value(curve,stag+t*(end-stag),lower+i,NULL,NULL);
+        }
+    }
+}
+
 static int boundary_points(const AlulaPanelField *field,const AlulaPanelGuides *guides,
     const AlulaPanelBodyGuide *profiles,AlulaAirfoilGrid *grid,const double *x,int nx,int count,
     AlulaBodySurface *surfaces,double *fractions,AlulaPoint *boundaries)
@@ -121,10 +145,10 @@ static int boundary_points(const AlulaPanelField *field,const AlulaPanelGuides *
         const AlulaContourSpline *curve=profile->curve;
         AlulaBodyCut cut=grid->cuts[g];
         AlulaPoint *lower=boundaries+(2*g+1)*rows,*upper=lower+rows;
-        double end=curve->arc[curve->count-1],stag=profile->stagnation;
+        double end=curve->arc[curve->count-1];
         double *f=fractions+(size_t)g*4*rows;
         double *width=f+2*rows;
-        surfaces[g]=(AlulaBodySurface){.surface=curve->points,.count=curve->count,.stagnation=stag,
+        surfaces[g]=(AlulaBodySurface){.surface=curve->points,.count=curve->count,.stagnation=profile->stagnation,
             .lower_fraction=f,.upper_fraction=f,.lower_thickness=f+rows,.upper_thickness=f+rows,
             .wake_width=width,.material_wake=1};
         AlulaPoint a,b,d;
@@ -137,32 +161,27 @@ static int boundary_points(const AlulaPanelField *field,const AlulaPanelGuides *
         double along=dot(tangent,vector),normal=cross(tangent,vector);
         if (normal<0) return 0;
         grid->base_width[g]=normal;
-        for (int i=0;i<=nx;++i) {
-            if (i<cut.leading) {
-                if (!guide_point(guides,profile->incoming,profile->stagnation_point,x[i],lower+i)) return 0;
-                upper[i]=lower[i];
-            } else if (i<=cut.trailing) {
-                f[i-cut.leading]=(x[i]-x[cut.leading])/(x[cut.trailing]-x[cut.leading]);
-                double t=f[i-cut.leading];
-                alula_contour_spline_value(curve,(1-t)*stag,upper+i,NULL,NULL);
-                alula_contour_spline_value(curve,stag+t*(end-stag),lower+i,NULL,NULL);
-            } else {
-                AlulaPoint p;
-                if (!guide_point(guides,profile->wake,profile->trailing_edge,x[i],&p)) return 0;
-                if (normal>0) {
-                    AlulaPoint q;
-                    if (!alula_panel_field_sample(field,p,&q,NULL)) return 0;
-                    magnitude=norm(q);
-                    if (!(magnitude>0) || !isfinite(magnitude)) return 0;
-                    tangent=(AlulaPoint){q.x/magnitude,q.y/magnitude};
-                }
-                AlulaPoint gap={along*tangent.x-normal*tangent.y,along*tangent.y+normal*tangent.x};
-                lower[i]=(AlulaPoint){p.x-.5*gap.x,p.y-.5*gap.y};
-                upper[i]=(AlulaPoint){p.x+.5*gap.x,p.y+.5*gap.y};
-                width[i-cut.trailing-1]=normal;
+        for (int i=0;i<cut.leading;++i) {
+            if (!guide_point(guides,profile->incoming,profile->stagnation_point,x[i],lower+i)) return 0;
+            upper[i]=lower[i];
+        }
+        for (int i=cut.trailing+1;i<=nx;++i) {
+            AlulaPoint p;
+            if (!guide_point(guides,profile->wake,profile->trailing_edge,x[i],&p)) return 0;
+            if (normal>0) {
+                AlulaPoint q;
+                if (!alula_panel_field_sample(field,p,&q,NULL)) return 0;
+                magnitude=norm(q);
+                if (!(magnitude>0) || !isfinite(magnitude)) return 0;
+                tangent=(AlulaPoint){q.x/magnitude,q.y/magnitude};
             }
+            AlulaPoint gap={along*tangent.x-normal*tangent.y,along*tangent.y+normal*tangent.x};
+            lower[i]=(AlulaPoint){p.x-.5*gap.x,p.y-.5*gap.y};
+            upper[i]=(AlulaPoint){p.x+.5*gap.x,p.y+.5*gap.y};
+            width[i-cut.trailing-1]=normal;
         }
     }
+    surface_points(profiles,grid,x,nx,count,fractions,boundaries,0);
     return 1;
 }
 
@@ -182,18 +201,26 @@ static AlulaPoint crossline_direction(const AlulaPanelBodyGuide *profile,AlulaBo
     return mix(across,normal,weight);
 }
 
+static void mass_weights(const AlulaAirfoilGrid *grid,int count,double *weights)
+{
+    for (int g=0;g<=count;++g) {
+        int n=grid->tubes[g];
+        double growth=pow(24,1.0/fmax(1,n-1));
+        for (int j=0;j<n;++j)
+            weights[j]=g==0?pow(growth,n-1-j):g==count?pow(growth,j):sin(ALULA_PI*(j+.5)/n);
+        weights+=n;
+    }
+}
+
 static void fill_passages(AlulaAirfoilGrid *grid,const AlulaPanelBodyGuide *profiles,
-    const AlulaPoint *boundaries,const double *fractions,const double *x,double *weights,int nx,int count)
+    const AlulaPoint *boundaries,const double *fractions,const double *x,const double *weights,int nx,int count)
 {
     size_t offset=0;
     for (int g=0;g<=count;++g) {
         int n=grid->tubes[g],rows=nx+1;
         const AlulaPoint *lower=boundaries+2*g*rows,*upper=lower+rows;
-        double growth=pow(24,1.0/fmax(1,n-1)),sum=0;
-        for (int j=0;j<n;++j) {
-            weights[j]=g==0?pow(growth,n-1-j):g==count?pow(growth,j):sin(ALULA_PI*(j+.5)/n);
-            sum+=weights[j];
-        }
+        double sum=0;
+        for (int j=0;j<n;++j) sum+=weights[j];
         double lower_decay=g==0?0:.045*(profiles[g-1].trailing_edge.x-profiles[g-1].stagnation_point.x);
         double upper_decay=g==count?0:.045*(profiles[g].trailing_edge.x-profiles[g].stagnation_point.x);
         for (int i=0;i<=nx;++i) {
@@ -222,6 +249,8 @@ static void fill_passages(AlulaAirfoilGrid *grid,const AlulaPanelBodyGuide *prof
 static void check_quality(const AlulaAirfoilGrid *grid,AlulaAirfoilGridReport *report)
 {
     int nx=report->nx, offset=0;
+    report->invalid_cells=0;
+    report->first_group=report->first_interval=report->first_tube=-1;
     report->minimum_corner_sine=1;
     for (int g=0;g<=report->elements;++g) {
         int width=grid->tubes[g]+1;
@@ -242,6 +271,80 @@ static void check_quality(const AlulaAirfoilGrid *grid,AlulaAirfoilGridReport *r
         }
         offset+=(nx+1)*width;
     }
+}
+
+static void repair_grid(AlulaAirfoilGrid *g,AlulaAirfoilGridReport *report)
+{
+    AlulaPoint *passage=g->nodes;
+    for (int i=0;i<=report->elements;++i) {
+        alula_repair_passage(passage,report->nx,g->tubes[i]);
+        passage+=(size_t)(report->nx+1)*(g->tubes[i]+1);
+    }
+    check_quality(g,report);
+}
+
+static int seed_potential(const AlulaPanelField *field,const AlulaPanelGuides *guides,
+    const AlulaPanelBodyGuide *profiles,AlulaAirfoilGrid *g,const AlulaAirfoilGridInput *in,
+    const double *x,const double *weights,double *fractions,AlulaPoint *banks,AlulaAirfoilGridReport *report)
+{
+    int nx=report->nx,count=report->elements,n=alula_body_size(g->body).tubes;
+    AlulaPanelStreamline **lines=calloc((size_t)n,sizeof *lines);
+    double *guide_phi=malloc((size_t)(count+2)*(nx+1)*sizeof *guide_phi);
+    int ok=0;
+    if (!lines || !guide_phi || !alula_grid_guide_potential(field,guides,profiles,g,x,nx,count,guide_phi)) goto done;
+    report->crosslines=ALULA_CROSSLINE_POTENTIAL;
+    int first=alula_fill_potential_grid(field,guides,profiles,g,banks,guide_phi,fractions,weights,nx,count,in->chord,lines);
+    if (first) check_quality(g,report);
+    int valid=first && !report->invalid_cells;
+    ok=valid && report->minimum_corner_sine>=.05;
+    if (!ok) {
+        surface_points(profiles,g,x,nx,count,fractions,banks,1);
+        if (alula_fill_potential_grid(field,guides,profiles,g,banks,guide_phi,fractions,weights,nx,count,in->chord,lines)) {
+            check_quality(g,report);
+            if (report->invalid_cells) repair_grid(g,report);
+            ok=!report->invalid_cells;
+        }
+    }
+    if (!ok && valid) {
+        surface_points(profiles,g,x,nx,count,fractions,banks,0);
+        if (alula_fill_potential_grid(field,guides,profiles,g,banks,guide_phi,fractions,weights,nx,count,in->chord,lines)) {
+            check_quality(g,report);
+            ok=!report->invalid_cells;
+        }
+    }
+done:
+    if (lines) for (int i=0;i<n;++i) alula_panel_streamline_free(lines[i]);
+    free(lines);free(guide_phi);
+    return ok;
+}
+
+static int seed_geometry(const AlulaPanelField *field,const AlulaPanelGuides *guides,
+    const AlulaPanelBodyGuide *profiles,AlulaAirfoilGrid *g,const AlulaAirfoilGridInput *in,
+    AlulaBodySurface *surfaces,const double *x,double *weights,double *fractions,AlulaPoint *banks,
+    AlulaAirfoilGridReport *report)
+{
+    int nx=report->nx,count=report->elements;
+    mass_weights(g,count,weights);
+    if (!boundary_points(field,guides,profiles,g,x,nx,count,surfaces,fractions,banks)) return 0;
+    if (in->crosslines!=ALULA_CROSSLINE_POTENTIAL) {
+        fill_passages(g,profiles,banks,fractions,x,weights,nx,count);
+        report->crosslines=ALULA_CROSSLINE_ALGEBRAIC;
+        check_quality(g,report);
+        if (in->crosslines==ALULA_CROSSLINE_ALGEBRAIC || !report->invalid_cells) {
+            if (report->invalid_cells) repair_grid(g,report);
+            return 1;
+        }
+    }
+    /* A valid but sharply skewed nose can also make the inlet gas seed
+     * choke. Retry with gentler material spacing before repairing vertices. */
+    if (seed_potential(field,guides,profiles,g,in,x,weights,fractions,banks,report)) return 1;
+    if (in->crosslines==ALULA_CROSSLINE_POTENTIAL) return report->invalid_cells>0;
+    surface_points(profiles,g,x,nx,count,fractions,banks,0);
+    fill_passages(g,profiles,banks,fractions,x,weights,nx,count);
+    report->crosslines=ALULA_CROSSLINE_ALGEBRAIC;
+    check_quality(g,report);
+    if (report->invalid_cells) repair_grid(g,report);
+    return 1;
 }
 
 static double seed_density(double flux,double specific,double stag,double sonic,double capacity)
@@ -291,10 +394,10 @@ static int seed_gas(AlulaAirfoilGrid *g,int nx,int elements,double mach)
     return 1;
 }
 
-/* The selected Euler residual is the final admissibility check. This
- * fallback ports the subsonic uniform-density pressure bound used by the
- * web initializer to avoid starting from a nonpositive interface pressure. */
-static int pressure_domain_seed(AlulaAirfoilGrid *g,int nx,int elements,double mach)
+/* Try density floors on the two sections of each cell. If a local floor
+ * leaves an interface inadmissible, use the uniform-density pressure bound.
+ * The full Euler evaluator checks either proposed state. */
+static int pressure_domain_seed(AlulaAirfoilGrid *g,int nx,int elements,double mach,int local)
 {
     const double gamma=1.4,gm=gamma-1,h0=1/(gm*mach*mach)+.5;
     const double k=gm/gamma, sonic_sq=2*gm*h0/(gamma+1), correction=.1;
@@ -302,7 +405,7 @@ static int pressure_domain_seed(AlulaAirfoilGrid *g,int nx,int elements,double m
     double needed=rho_total*rho_total;
     AlulaBodyState state;
     if (!alula_airfoil_grid_state(g,&state)) return 0;
-    int offset=0,tube=0;
+    int offset=0,tube=0,total=alula_body_size(g->body).tubes;
     for (int p=0;p<=elements;++p) {
         int width=g->tubes[p]+1;
         for (int i=1;i<nx;++i) for (int j=0;j<width-1;++j) {
@@ -317,19 +420,33 @@ static int pressure_domain_seed(AlulaAirfoilGrid *g,int nx,int elements,double m
             const AlulaCellGeometry *c=&scratch.value.geometry;
             double mass=state.mass[tube+j],a=mass/c->normal_area[0],b=mass/c->normal_area[1];
             double energy=.5*(a*a+b*b);
-            double normal=mass*(a*dot(c->direction[0],c->transverse)
-                -b*dot(c->direction[1],c->transverse))/c->area;
+            double left=a*dot(c->direction[0],c->transverse),right=b*dot(c->direction[1],c->transverse);
+            double bound=fabs(left-right);
+            /* Independent density floors can reduce either term, so the
+             * bound must also cover the loss of their cancellation. */
+            if (local) bound=fmax(bound,fmax(fabs(left),fabs(right)));
+            double normal=mass*bound/c->area;
             double area=cross(c->section[0],c->section[1])/c->area;
             double pressure=correction*.5*(gamma+1)*energy*fabs(c->curvature);
-            needed=fmax(needed,(k*energy+fabs(normal)+pressure*(2+fabs(area)))/(2*k*h0));
-            needed=fmax(needed,fmax(a*a,b*b)/sonic_sq);
+            double floor=(k*energy+normal+pressure*(2+fabs(area)))/(2*k*h0);
+            floor=fmax(floor,fmax(a*a,b*b)/sonic_sq);
+            if (!isfinite(floor)) return 0;
+            if (local && floor>.95) {
+                double rho=.5*log(floor/.95);
+                int slot=(i-1)*total+tube+j;
+                g->packed[slot]=fmax(g->packed[slot],rho);
+                g->packed[slot+total]=fmax(g->packed[slot+total],rho);
+            }
+            needed=fmax(needed,floor);
         }
         offset+=(nx+1)*width;
         tube+=width-1;
     }
     if (!isfinite(needed)) return 0;
-    double log_density=.5*log(needed/.95);
-    for (int i=0;i<nx*tube;++i) g->packed[i]=log_density;
+    if (!local) {
+        double log_density=.5*log(needed/.95);
+        for (int i=0;i<nx*tube;++i) g->packed[i]=log_density;
+    }
     return 1;
 }
 
@@ -338,6 +455,16 @@ static AlulaBodyStatus evaluate_seed(AlulaAirfoilGrid *g,double *residual)
     AlulaBodyState state;
     if (!alula_airfoil_grid_state(g,&state)) return ALULA_BODY_INVALID;
     return alula_body_residual(g->body,&state,residual,NULL);
+}
+
+AlulaBodyStatus alula_airfoil_grid_admit_seed(AlulaAirfoilGrid *g,double *residual)
+{
+    AlulaBodySize size=alula_body_size(g->body);
+    int nx=size.density/size.tubes;
+    AlulaBodyStatus status=evaluate_seed(g,residual);
+    if (status!=ALULA_BODY_OK && pressure_domain_seed(g,nx,g->elements,g->mach,1)) status=evaluate_seed(g,residual);
+    if (status!=ALULA_BODY_OK && pressure_domain_seed(g,nx,g->elements,g->mach,0)) status=evaluate_seed(g,residual);
+    return status;
 }
 
 AlulaAirfoilGrid *alula_airfoil_grid_create(const AlulaContour *contours,size_t count,
@@ -353,6 +480,7 @@ AlulaAirfoilGrid *alula_airfoil_grid_create(const AlulaContour *contours,size_t 
     double *x=NULL,*weights=NULL,*fractions=NULL;
     AlulaPoint *banks=NULL;
     if (!in || !contours || count<1 || count>6 || !in->tubes ||
+        in->crosslines<ALULA_CROSSLINE_AUTO || in->crosslines>ALULA_CROSSLINE_POTENTIAL ||
         in->surface_intervals<4 || in->surface_intervals>512 ||
         in->inlet_intervals<2 || in->inlet_intervals>512 ||
         in->outlet_intervals<2 || in->outlet_intervals>512 ||
@@ -383,11 +511,14 @@ AlulaAirfoilGrid *alula_airfoil_grid_create(const AlulaContour *contours,size_t 
     if (!rows || total>100000/(rows-1)) goto done;
     report.nx=rows-1;
     report.elements=(int)count;
+    g->elements=(int)count;
+    g->mach=in->mach;g->lower_y=in->lower_y;g->upper_y=in->upper_y;
     int primary=0,finite=0;
     for (size_t i=0;i<=count;++i) g->tubes[i]=in->tubes[i];
     code=ALULA_GRID_ALLOCATION;
     for (size_t i=0;i<count;++i) {
         const AlulaContour *source=contours+profiles[i].element;
+        g->contour_index[i]=(int)profiles[i].element;
         finite|=source->finite_base!=0;
         if (!save_base(g->bases+i,source)) goto done;
         if (profiles[i].curve->arc[profiles[i].curve->count-1]>
@@ -410,19 +541,7 @@ AlulaAirfoilGrid *alula_airfoil_grid_create(const AlulaContour *contours,size_t 
     if (!g->nodes || !fractions || !banks || !weights || !g->packed || !g->physical) goto done;
     AlulaBodySurface surface[6];
     code=ALULA_GRID_STATIONS;
-    if (!boundary_points(field,guides,profiles,g,x,rows-1,(int)count,surface,fractions,banks)) goto done;
-    fill_passages(g,profiles,banks,fractions,x,weights,rows-1,(int)count);
-    check_quality(g,&report);
-    if (report.invalid_cells) {
-        AlulaPoint *passage=g->nodes;
-        for (size_t i=0;i<=count;++i) {
-            alula_repair_passage(passage,rows-1,g->tubes[i]);
-            passage+=(size_t)rows*(g->tubes[i]+1);
-        }
-        report.invalid_cells=0;
-        report.first_group=report.first_interval=report.first_tube=-1;
-        check_quality(g,&report);
-    }
+    if (!seed_geometry(field,guides,profiles,g,in,surface,x,weights,fractions,banks,&report)) goto done;
     code=ALULA_GRID_FOLDED;
     if (report.invalid_cells) goto done;
     code=ALULA_GRID_STATIONS;
@@ -436,10 +555,9 @@ AlulaAirfoilGrid *alula_airfoil_grid_create(const AlulaContour *contours,size_t 
     if (!seed_gas(g,rows-1,(int)count,in->mach)) goto done;
     double *residual=malloc((size_t)size.rows*sizeof *residual);
     if (!residual) {code=ALULA_GRID_ALLOCATION;goto done;}
-    report.flow_seed=evaluate_seed(g,residual);
-    if (report.flow_seed!=ALULA_BODY_OK && pressure_domain_seed(g,rows-1,(int)count,in->mach))
-        report.flow_seed=evaluate_seed(g,residual);
+    report.flow_seed=alula_airfoil_grid_admit_seed(g,residual);
     free(residual);
+    g->stations=x;x=NULL;
     code=ALULA_GRID_OK;
 done:
     free(x);free(weights);free(fractions);free(banks);
@@ -458,6 +576,11 @@ AlulaBodySize alula_airfoil_grid_size(const AlulaAirfoilGrid *g)
 
 const AlulaBodyCut *alula_airfoil_grid_cuts(const AlulaAirfoilGrid *g) { return g?g->cuts:NULL; }
 const int *alula_airfoil_grid_tubes(const AlulaAirfoilGrid *g) { return g?g->tubes:NULL; }
+
+int alula_airfoil_grid_contour_index(const AlulaAirfoilGrid *g,int body)
+{
+    return g && body>=0 && body<g->elements?g->contour_index[body]:-1;
+}
 
 int alula_airfoil_grid_state(AlulaAirfoilGrid *g,AlulaBodyState *state)
 {
@@ -488,5 +611,5 @@ void alula_airfoil_grid_free(AlulaAirfoilGrid *g)
     if (!g) return;
     for (int i=0;i<6;++i) free(g->bases[i].points);
     alula_body_newton_free(g->solver);alula_body_coordinates_free(g->coordinates);alula_body_free(g->body);
-    free(g->physical);free(g->packed);free(g->nodes);free(g);
+    free(g->stations);free(g->physical);free(g->packed);free(g->nodes);free(g);
 }

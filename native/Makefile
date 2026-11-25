@@ -29,7 +29,7 @@ KLU_OBJ := $(patsubst $(SUITESPARSE)/%.c,.klu/%.o,$(KLU_SRC))
 	@mkdir -p $(@D)
 	$(CC) $(KLU_CPPFLAGS) $(filter-out -Wextra -Wpedantic,$(CFLAGS)) -DNDEBUG -DNPRINT= -DNTIMER -DDINT -c $< -o $@
 
-libalula.a: panel.o panel_streamfunction.o panel_field.o panel_guide.o contour.o trace.o streamtube.o sparse.o channel.o body.o body_jacobian.o body_newton.o body_chart.o airfoil_grid.o grid_relax.o bl.o bl_march.o airfoil_bl.o airfoil_coupled.o airfoil_loads.o $(KLU_OBJ)
+libalula.a: panel.o panel_streamfunction.o panel_field.o panel_guide.o contour.o trace.o streamtube.o sparse.o channel.o body.o body_jacobian.o body_newton.o body_chart.o airfoil_grid.o airfoil_transfer.o grid_potential.o grid_relax.o bl.o bl_march.o airfoil_bl.o airfoil_coupled.o airfoil_loads.o $(KLU_OBJ)
 	$(AR) rcs $@ $^
 
 panel.o panel_streamfunction.o panel_field.o check-panel-field.o: panel.h panel_internal.h
@@ -44,6 +44,9 @@ airfoil_bl.o: airfoil_bl.h airfoil_grid_internal.h airfoil_grid.h body_chart.h b
 airfoil_coupled.o: airfoil_coupled.h airfoil_bl.h airfoil_grid_internal.h airfoil_grid.h body_chart.h body_newton.h body.h body_internal.h contour.h panel.h bl.h
 airfoil_loads.o: airfoil_grid_internal.h airfoil_grid.h body_chart.h body_newton.h body.h body_internal.h contour.h panel.h
 airfoil_grid.o grid_relax.o: grid_relax.h
+airfoil_grid.o grid_potential.o: grid_potential.h
+grid_potential.o: airfoil_grid_internal.h airfoil_grid.h body_chart.h body_newton.h body.h panel_guide.h panel_internal.h contour.h trace.h panel.h
+airfoil_transfer.o: airfoil_grid_internal.h airfoil_grid.h body_chart.h body_newton.h body.h body_internal.h streamtube_internal.h streamtube.h contour.h panel.h sparse.h
 grid_relax.o: panel_internal.h panel.h
 bl.o bl_march.o check-bl.o: bl.h
 check-panel-field.o: panel_guide.h contour.h
@@ -51,6 +54,7 @@ streamtube.o channel.o body.o body_jacobian.o: streamtube_internal.h
 streamtube.o channel.o body.o body_jacobian.o check-streamtube.o: streamtube.h panel.h
 sparse.o: CPPFLAGS += $(KLU_CPPFLAGS)
 sparse.o channel.o: sparse.h
+cli_euler.o airfoil_grid.o airfoil_bl.o airfoil_coupled.o airfoil_loads.o grid_potential.o: sparse.h
 channel.o check-channel.o: channel.h sparse.h
 body.o body_jacobian.o body_newton.o body_chart.o: body_internal.h body.h streamtube.h streamtube_internal.h
 body_newton.o body_chart.o check-body.o: body_newton.h sparse.h

@@ -61,10 +61,10 @@ int main(void)
     double begin=milliseconds();
     AlulaChannelResult r=alula_channel_solve(c,vectors,iterations,tolerance);
     double elapsed=milliseconds()-begin;
-    printf("%d %d %d %.17g %.17g %d %d %d %d %.17g %.17g\n",
+    printf("%d %d %d %.17g %.17g %d %d %d %d %.17g %.17g %d\n",
         (int)r.status,r.iterations,r.backtracks,r.residual,r.max_mach,
         r.linear.nonzeros,r.linear.factor_nonzeros,r.linear.factor_count,r.linear.refactor_count,
-        r.linear.max_relative_residual,elapsed);
+        r.linear.max_relative_residual,elapsed,r.linear.factor_reuses);
     emit(vectors,n);
     status=0;
 done:

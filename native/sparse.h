@@ -7,7 +7,7 @@
 typedef struct AlulaSparse AlulaSparse;
 typedef struct { int row, column; } AlulaSparseEntry;
 typedef struct {
-    int nonzeros, factor_nonzeros, factor_count, refactor_count;
+    int nonzeros, factor_nonzeros, factor_count, refactor_count, factor_reuses;
     double max_relative_residual;
 } AlulaSparseStats;
 

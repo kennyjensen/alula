@@ -13,6 +13,7 @@ import { intrinsicBodyFixture } from '../tests/fixtures/intrinsic-body.js';
 import { twoActiveFiniteBaseWakes } from '../tests/fixtures/two-active-finite-base-wakes.js';
 
 const binary=fileURLToPath(new URL('./check-body',import.meta.url));
+execFileSync(binary,['--check-sparse']);
 const families=['streamwise','inletDensity','internalPressure','farfieldPressure','cutPressure',
   'endTangency','wakeGap','trailingKutta','leadingKutta','farfieldMatch'];
 const upwind={ mucon:1, mcrit:.5, boundary:{kind:'unfiltered-first-two'} };
@@ -153,8 +154,8 @@ function call(system, state, value, settings={}) {
     for (const [i,x] of rows[0].entries())
       assert.ok(Math.abs(x-newton.expected[i])<=3e-10*Math.max(1,Math.abs(newton.expected[i])),
         `sparse ${l.rows[i].kind} at row ${i}: ${x} vs ${newton.expected[i]}`);
-    const [status,iterations,backtracks,colors,norm,mach,ms,factors,refactors,linearResidual]=rows[1];
-    return {status,iterations,backtracks,colors,norm,mach,ms,factors,refactors,linearResidual,x:Float64Array.from(rows[2])};
+    const [status,iterations,backtracks,colors,norm,mach,ms,factors,refactors,linearResidual,reuses]=rows[1];
+    return {status,iterations,backtracks,colors,norm,mach,ms,factors,refactors,linearResidual,reuses,x:Float64Array.from(rows[2])};
   }
   const [status,n,ms]=rows[0];
   assert.equal(n,l.n);
@@ -251,7 +252,7 @@ for(const options of [{elements:1,tubes:3,mach:.2},{elements:2,tubes:5,tubeGrowt
   const initial=body.initial;
   const solved=call(body,initial,body.evaluate(initial),{newton:20});
   assert.equal(solved.status,0,JSON.stringify({...solved,x:undefined}));
-  assert.ok(solved.iterations>1 && solved.refactors>0 && solved.norm<=1e-10 && solved.linearResidual<1e-10);
+  assert.ok(solved.iterations>1 && solved.refactors+solved.reuses>0 && solved.norm<=1e-10 && solved.linearResidual<=1e-10);
   assert.ok(solved.colors<50);
   assert.ok(body.evaluate(solved.x).diagnostics.residual<1e-10);
   const order=streamtubeEquationOrder(body.layout);

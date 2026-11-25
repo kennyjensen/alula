@@ -10,6 +10,7 @@ typedef struct {
     AlulaBLEdge edge;
     AlulaBLRegime regime;
     double trip,exponent,mach_sq,scale;
+    double interaction_thickness,inverse_hk;
 } March;
 
 static int positive(double x) { return x>0 && isfinite(x); }
@@ -27,7 +28,8 @@ static int initialize(March *m,const AlulaBLContext *c,const AlulaBLStation *pre
 {
     double mach_sq=edge_mach_sq(c,edge.ue);
     if (!(mach_sq>=0) || !isfinite(mach_sq)) return 0;
-    *m=(March){c,previous,edge,regime,trip,exponent,mach_sq,1/fmax(5*theta,1e-12)};
+    *m=(March){.physics=c,.previous=previous,.edge=edge,.regime=regime,.trip=trip,
+        .exponent=exponent,.mach_sq=mach_sq,.scale=1/fmax(5*theta,1e-12)};
     return 1;
 }
 
@@ -36,8 +38,20 @@ static int variables(const March *m) { return m->regime>=ALULA_BL_TURBULENT?3:2;
 static AlulaBLStation unpack(const March *m,const double x[3])
 {
     double theta=exp(x[0]),hk=1+exp(x[1]),aux=variables(m)==3?exp(x[2]):0;
-    return (AlulaBLStation){m->edge.s,theta,m->edge.wake_gap+theta*hk_to_h(hk,m->mach_sq),
-        m->edge.ue,aux,m->edge.wake_gap};
+    double ue=m->edge.ue,mach_sq=m->mach_sq;
+    if (m->inverse_hk>0) {
+        ue=exp(x[1]);
+        hk=m->inverse_hk;
+        mach_sq=edge_mach_sq(m->physics,ue);
+    } else if (m->interaction_thickness>0) {
+        /* Robin interaction: (Ue / UeEuler)^3 = delta* / delta*grid.
+         * Eliminate theta using the physical displacement thickness. */
+        ue=m->edge.ue*exp(x[0]);
+        mach_sq=edge_mach_sq(m->physics,ue);
+        theta=m->interaction_thickness*exp(3*x[0])/hk_to_h(hk,mach_sq);
+    }
+    return (AlulaBLStation){m->edge.s,theta,m->edge.wake_gap+theta*hk_to_h(hk,mach_sq),
+        ue,aux,m->edge.wake_gap};
 }
 
 static AlulaBLStatus residual(const March *m,const double x[3],double r[3],AlulaBLBlock *v)
@@ -107,6 +121,8 @@ static AlulaBLStatus solve(const March *m,double theta,double hk,double aux,
     AlulaBLStation *s,AlulaBLBlock *v,AlulaBLMarchResult *report)
 {
     double x[3]={log(theta),log(hk-1),log(fmax(aux,1e-8))},r[3];
+    if (m->inverse_hk>0) x[1]=log(m->edge.ue);
+    if (m->interaction_thickness>0) x[0]=0;
     int n=variables(m);
     AlulaBLStatus status=residual(m,x,r,v);
     if (status!=ALULA_BL_OK) return status;
@@ -167,13 +183,15 @@ static void publish(AlulaBLMarchResult *r,const AlulaBLBlock *v)
     ++r->completed;
 }
 
-AlulaBLMarchResult alula_bl_march_surface(const AlulaBLContext *c,
+AlulaBLMarchResult alula_bl_march_surface_controlled(const AlulaBLContext *c,
     const AlulaBLEdge *edges,size_t count,double trip,double exponent,
-    AlulaBLStation *profile,AlulaBLRegime *regimes)
+    const double *displacement,int local,AlulaBLStation *profile,AlulaBLRegime *regimes)
 {
     AlulaBLMarchResult r={.status=ALULA_BL_INVALID};
     if (!c || !profile || !regimes || !positive(trip) || !isfinite(exponent) ||
         !profile_valid(edges,count,0)) return r;
+    if (displacement) for (size_t i=0;i<count;++i)
+        if (!(displacement[i]>=0) || !isfinite(displacement[i])) return r;
     AlulaBLStation virtual_station;
     AlulaBLProperties prior={0};
     const AlulaBLStation *previous=NULL;
@@ -185,6 +203,7 @@ AlulaBLMarchResult alula_bl_march_surface(const AlulaBLContext *c,
         prior=v.downstream;
         previous=&virtual_station;
     }
+    int separated=0;
     for (size_t i=0;i<count;++i) {
         AlulaBLBlock value;
         AlulaBLStation current;
@@ -200,7 +219,21 @@ AlulaBLMarchResult alula_bl_march_surface(const AlulaBLContext *c,
             if (!initialize(&m,c,previous,edges[i],regime,trip,exponent,theta)) {
                 r.status=ALULA_BL_DOMAIN;return r;
             }
+            if (displacement && (!local || separated)) m.interaction_thickness=displacement[i];
             r.status=solve(&m,theta,hk,aux,&current,&value,&r);
+            /* Keep the attached part at Euler speed. Switch to interaction
+             * only where the direct turbulent march needs it. */
+            if (local && !separated && r.status!=ALULA_BL_OK && displacement &&
+                displacement[i]>0 && regime==ALULA_BL_TURBULENT) {
+                separated=1;
+                m.interaction_thickness=displacement[i];
+                r.status=solve(&m,theta,hk,aux,&current,&value,&r);
+            }
+            if (r.status!=ALULA_BL_OK && displacement && displacement[i]==0 && regime==ALULA_BL_TURBULENT) {
+                separated=1;
+                m.inverse_hk=fmax(2.6,hk);
+                r.status=solve(&m,theta,hk,aux,&current,&value,&r);
+            }
             AlulaBLTransition selection={0};
             if (regime==ALULA_BL_LAMINAR && r.status==ALULA_BL_OK) {
                 theta=current.theta;hk=value.downstream.raw_hk;
@@ -220,6 +253,7 @@ AlulaBLMarchResult alula_bl_march_surface(const AlulaBLContext *c,
         }
         profile[i]=current;
         regimes[i]=regime;
+        r.edge_residual=fmax(r.edge_residual,fabs(current.ue-edges[i].ue));
         previous=profile+i;
         prior=value.downstream;
         publish(&r,&value);
@@ -227,13 +261,29 @@ AlulaBLMarchResult alula_bl_march_surface(const AlulaBLContext *c,
     return r;
 }
 
-AlulaBLMarchResult alula_bl_march_wake(const AlulaBLContext *c,
+AlulaBLMarchResult alula_bl_march_surface_interaction(const AlulaBLContext *c,
+    const AlulaBLEdge *edges,size_t count,double trip,double exponent,
+    const double *displacement,AlulaBLStation *profile,AlulaBLRegime *regimes)
+{
+    return alula_bl_march_surface_controlled(c,edges,count,trip,exponent,displacement,0,profile,regimes);
+}
+
+AlulaBLMarchResult alula_bl_march_surface(const AlulaBLContext *c,
+    const AlulaBLEdge *edges,size_t count,double trip,double exponent,
+    AlulaBLStation *profile,AlulaBLRegime *regimes)
+{
+    return alula_bl_march_surface_interaction(c,edges,count,trip,exponent,NULL,profile,regimes);
+}
+
+AlulaBLMarchResult alula_bl_march_wake_interaction(const AlulaBLContext *c,
     const AlulaBLStation *upper,const AlulaBLStation *lower,
-    const AlulaBLEdge *edges,size_t count,AlulaBLStation *profile)
+    const AlulaBLEdge *edges,size_t count,const double *displacement,AlulaBLStation *profile)
 {
     AlulaBLMarchResult r={.status=ALULA_BL_INVALID};
     if (!c || !upper || !lower || !profile || !positive(upper->aux) || !positive(lower->aux) ||
         !profile_valid(edges,count,1)) return r;
+    if (displacement) for (size_t i=1;i<count;++i)
+        if (!(displacement[i-1]>=0) || !isfinite(displacement[i-1])) return r;
     double theta=upper->theta+lower->theta;
     if (!positive(theta)) return r;
     AlulaBLEdge first=edges[0];
@@ -253,9 +303,22 @@ AlulaBLMarchResult alula_bl_march_wake(const AlulaBLContext *c,
         }
         AlulaBLStation next;
         r.status=solve(&m,previous->theta,hk,previous->aux,&next,&v,&r);
+        if (r.status!=ALULA_BL_OK && displacement) {
+            m.interaction_thickness=fmax(0,displacement[i-1]-edges[i].wake_gap);
+            if (!m.interaction_thickness) m.inverse_hk=fmax(1.35,hk);
+            r.status=solve(&m,previous->theta,hk,previous->aux,&next,&v,&r);
+        }
         if (r.status!=ALULA_BL_OK) return r;
+        r.edge_residual=fmax(r.edge_residual,fabs(next.ue-edges[i].ue));
         profile[i]=next;
         publish(&r,&v);
     }
     return r;
+}
+
+AlulaBLMarchResult alula_bl_march_wake(const AlulaBLContext *c,
+    const AlulaBLStation *upper,const AlulaBLStation *lower,
+    const AlulaBLEdge *edges,size_t count,AlulaBLStation *profile)
+{
+    return alula_bl_march_wake_interaction(c,upper,lower,edges,count,NULL,profile);
 }

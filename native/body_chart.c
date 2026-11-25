@@ -524,6 +524,38 @@ void alula_body_coordinates_seed_circulation(const AlulaBodyCoordinates *c,doubl
     if (c && x && isfinite(circulation)) x[c->strength[0]]=circulation/c->scale;
 }
 
+int alula_body_coordinates_seed_state(AlulaBodyCoordinates *c,double *x,
+    const double *stagnation,const double *passage_mass,const AlulaBodyState *source)
+{
+    double level=c->level[0];
+    int bodies=c->body->in.bodies;
+    for (int g=0;g<bodies;++g) {
+        level+=passage_mass[g];
+        if (c->capture[g]>=0) x[c->capture[g]]=(level-c->level[g+1])/c->span;
+        else if (fabs(level-c->level[g+1])>1e-12*c->span) return 0;
+        if (c->stag[g]>=0) {
+            const Surface *s=c->surfaces+g;
+            x[c->stag[g]]=(stagnation[g]-s->stagnation)/s->curve.arc[s->curve.count-1];
+        }
+    }
+    if (fabs(level+passage_mass[bodies]-c->level[bodies+1])>1e-12*c->span) return 0;
+    const double scales[]={c->scale,c->scale,c->scale*c->scale,c->scale*c->scale};
+    const double coefficients[]={source->circulation,source->source,source->doublet_x,source->doublet_y};
+    for (int k=0;k<4;++k) x[c->strength[k]]=coefficients[k]/scales[k];
+    return 1;
+}
+
+int alula_body_coordinates_seed_nodes(AlulaBodyCoordinates *c,double *x,const AlulaPoint *nodes)
+{
+    if (!coordinates(c,x,0)) return 0;
+    for (int k=0;k<c->body->size.nodes;++k) {
+        NodeSpec v=c->spec[k];
+        if (v.wall || v.canonical!=k) continue;
+        c->origin[k]=add(c->origin[k],sub(nodes[k],c->decoded[k].p));
+    }
+    return rebase(c,x);
+}
+
 int alula_body_coordinates_surface(const AlulaBodyCoordinates *c,const double *x,int element,
     int upper,AlulaBodySurfaceView *view)
 {

@@ -58,7 +58,7 @@ typedef struct {
     AlulaBLStatus status;
     size_t completed;
     int iterations,backtracks;
-    double maximum_residual;
+    double maximum_residual,edge_residual;
     AlulaBLTransition transition;
 } AlulaBLMarchResult;
 
@@ -68,10 +68,27 @@ typedef struct {
 AlulaBLMarchResult alula_bl_march_surface(const AlulaBLContext *ctx,
     const AlulaBLEdge *edges,size_t count,double trip_s,double similarity_exponent,
     AlulaBLStation *profile,AlulaBLRegime *regimes);
+/* Pass count nonnegative displacements in reference chords, or NULL for a
+ * fixed-edge march. Positive entries use a local interaction law. Zero
+ * uses the direct march with an inverse turbulent fallback. The caller
+ * must check the edge mismatch separately. */
+AlulaBLMarchResult alula_bl_march_surface_interaction(const AlulaBLContext *ctx,
+    const AlulaBLEdge *edges,size_t count,double trip_s,double similarity_exponent,
+    const double *displacement,AlulaBLStation *profile,AlulaBLRegime *regimes);
+/* Local mode keeps Euler edge speeds upstream of the first failed
+ * turbulent interval, then enables the interaction law downstream. */
+AlulaBLMarchResult alula_bl_march_surface_controlled(const AlulaBLContext *ctx,
+    const AlulaBLEdge *edges,size_t count,double trip_s,double similarity_exponent,
+    const double *displacement,int local,AlulaBLStation *profile,AlulaBLRegime *regimes);
 /* The two incoming TE stations use positive turbulent shear in aux.
  * The first wake edge supplies the material gap at the junction. */
 AlulaBLMarchResult alula_bl_march_wake(const AlulaBLContext *ctx,
     const AlulaBLStation *upper,const AlulaBLStation *lower,
     const AlulaBLEdge *edges,size_t count,AlulaBLStation *profile);
+/* Allow local recovery in the wake. Displacement has count-1 entries in
+ * reference chords, including each station's dead-air gap. */
+AlulaBLMarchResult alula_bl_march_wake_interaction(const AlulaBLContext *ctx,
+    const AlulaBLStation *upper,const AlulaBLStation *lower,
+    const AlulaBLEdge *edges,size_t count,const double *displacement,AlulaBLStation *profile);
 
 #endif
