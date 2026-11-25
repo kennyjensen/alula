@@ -63,7 +63,7 @@ static int positive_simple(const AlulaPoint *vertices, int n)
     return positive(area);
 }
 
-static int valid_geometry(const AlulaCellInput *in)
+static int valid_geometry(const AlulaCellInput *in,int first_quad_validated)
 {
     const AlulaPoint *l=in->lower, *u=in->upper;
     AlulaPoint ml[2], mu[2];
@@ -71,13 +71,15 @@ static int valid_geometry(const AlulaCellInput *in)
     for (int i=0; i<2; ++i) {
         AlulaPoint p[]={l[i],l[i+1],u[i+1],u[i]};
         if (in->positive_simple) {
-            if (!positive_simple(p,4)) return 0;
             ml[i]=mean(l[i],l[i+1]);
             mu[i]=mean(u[i],u[i+1]);
+            if (i==0 && first_quad_validated) continue;
+            if (!positive_simple(p,4)) return 0;
             AlulaPoint left[]={l[i],ml[i],mu[i],u[i]};
             AlulaPoint right[]={ml[i],l[i+1],u[i+1],mu[i]};
             if (!positive_simple(left,4) || !positive_simple(right,4)) return 0;
         } else {
+            if (i==0 && first_quad_validated) continue;
             for (int j=0; j<4; ++j)
                 if (!(cross(sub(p[(j+1)%4],p[j]),sub(p[(j+2)%4],p[(j+1)%4])) > 0)) return 0;
         }
@@ -87,13 +89,23 @@ static int valid_geometry(const AlulaCellInput *in)
     return positive_simple(middle,6);
 }
 
-static int geometry(AlulaCell *cell)
+static int geometry(AlulaCell *cell,const AlulaCell *previous)
 {
     const AlulaCellInput *in=&cell->input;
     const AlulaPoint *l=in->lower, *u=in->upper;
     AlulaCellGeometry *g=&cell->value.geometry;
-    for (int i=0; i<3; ++i) cell->gap[i]=sub(u[i],l[i]);
-    for (int i=0; i<2; ++i) {
+    if (previous) {
+        const AlulaCellGeometry *up=&previous->value.geometry;
+        cell->gap[0]=previous->gap[1];
+        cell->gap[1]=previous->gap[2];
+        cell->segment[0]=previous->segment[1];
+        g->length[0]=up->length[1];
+        g->direction[0]=up->direction[1];
+        g->section[0]=up->section[1];
+        g->normal_area[0]=up->normal_area[1];
+    }
+    for (int i=previous?2:0; i<3; ++i) cell->gap[i]=sub(u[i],l[i]);
+    for (int i=previous?1:0; i<2; ++i) {
         cell->segment[i]=mean(sub(l[i+1],l[i]),sub(u[i+1],u[i]));
         g->length[i]=hypot(cell->segment[i].x,cell->segment[i].y);
         if (!positive(g->length[i])) return 0;
@@ -122,24 +134,26 @@ static int finite_section(AlulaSection s)
 
 int alula_cell_geometry_only(AlulaCell *cell,const AlulaCellInput *in)
 {
-    if (!valid_geometry(in)) return 0;
+    if (!valid_geometry(in,0)) return 0;
     cell->input=*in;
-    return geometry(cell);
+    return geometry(cell,NULL);
 }
 
-AlulaCellStatus alula_cell_initialize(AlulaCell *cell, const AlulaCellInput *in)
+AlulaCellStatus alula_cell_initialize(AlulaCell *cell, const AlulaCellInput *in,
+    const AlulaCell *previous)
 {
     if (!cell || !in || !positive(in->mass) || !positive(in->h0) || !positive(in->density[0])
         || !positive(in->density[1]) || !isfinite(in->gamma) || in->gamma <= 1
         || !nonnegative(in->correction)) return ALULA_CELL_INPUT;
-    if (!valid_geometry(in)) return ALULA_CELL_GEOMETRY;
+    if (!valid_geometry(in,previous!=NULL)) return ALULA_CELL_GEOMETRY;
     cell->input=*in;
     AlulaCellValue *v=&cell->value;
     *v=(AlulaCellValue){0};
-    if (!geometry(cell)) return ALULA_CELL_GEOMETRY;
+    if (!geometry(cell,previous)) return ALULA_CELL_GEOMETRY;
     const AlulaCellGeometry *g=&v->geometry;
     double gm=in->gamma-1, k=gm/in->gamma;
-    for (int i=0; i<2; ++i) {
+    if (previous) v->state[0]=previous->value.state[1];
+    for (int i=previous?1:0; i<2; ++i) {
         double rho=in->density[i], q=in->mass/(rho*g->normal_area[i]);
         double h=in->h0-.5*q*q;
         if (!positive(h)) return ALULA_CELL_ENTHALPY;
@@ -185,7 +199,7 @@ AlulaCellStatus alula_cell_flux(AlulaCell *cell)
 
 AlulaCellStatus alula_cell_prepare(AlulaCell *cell, const AlulaCellInput *in)
 {
-    AlulaCellStatus status=alula_cell_initialize(cell,in);
+    AlulaCellStatus status=alula_cell_initialize(cell,in,NULL);
     return status == ALULA_CELL_OK ? alula_cell_flux(cell) : status;
 }
 
@@ -296,16 +310,15 @@ static int finite_upwind(AlulaUpwindValue v)
     return isfinite(v.speed) && isfinite(v.coefficient) && isfinite(v.correction);
 }
 
-AlulaCellStatus alula_streamtube_upwind(const AlulaUpwindInput *in, AlulaUpwindValue *value,
-    const AlulaUpwindInput *d, AlulaUpwindValue *dv)
+static AlulaCellStatus upwind_prepare(const AlulaUpwindInput *in, AlulaUpwindValue *value,
+    AlulaUpwindStencil *stencil, double *base_out, double *de_out)
 {
-    if (!in || !value || (d && !dv) || !isfinite(in->mucon) || !nonnegative(in->mcrit)
+    if (!in || !value || !isfinite(in->mucon) || !nonnegative(in->mcrit)
         || in->mcrit > 1 || !isfinite(in->gamma) || in->gamma <= 1) return ALULA_CELL_INPUT;
     for (int i=0; i<3; ++i)
-        if (!nonnegative(in->speed[i]) || (d && !isfinite(d->speed[i]))) return ALULA_CELL_INPUT;
+        if (!nonnegative(in->speed[i])) return ALULA_CELL_INPUT;
     for (int i=0; i<2; ++i)
-        if (!nonnegative(in->mach_sq[i]) || !positive(in->spacing[i]) ||
-            (d && (!isfinite(d->mach_sq[i]) || !isfinite(d->spacing[i])))) return ALULA_CELL_INPUT;
+        if (!nonnegative(in->mach_sq[i]) || !positive(in->spacing[i])) return ALULA_CELL_INPUT;
 
     double x=.5*in->mach_sq[0]+.5*in->mach_sq[1], e=1-in->mcrit;
     double base=0, dx=0, de=0;
@@ -320,7 +333,7 @@ AlulaCellStatus alula_streamtube_upwind(const AlulaUpwindInput *in, AlulaUpwindV
             double log_tail=log1p(tail);
             base=fmax(a,0)+e*log_tail;
             dx=sigmoid == 0 ? 0 : sigmoid/x/x;
-            de=log_tail+(isfinite(az) ? az*tail/(1+tail) : 0);
+            if (de_out) de=log_tail+(isfinite(az) ? az*tail/(1+tail) : 0);
         }
     }
     int second=in->mucon >= 0;
@@ -331,17 +344,41 @@ AlulaCellStatus alula_streamtube_upwind(const AlulaUpwindInput *in, AlulaUpwindV
     value->correction=value->coefficient*difference;
     value->speed=in->speed[2]+value->correction;
     if (!isfinite(ratio) || !finite_upwind(*value)) return ALULA_CELL_NONFINITE;
-    if (!d) return ALULA_CELL_OK;
+    if (stencil) *stencil=(AlulaUpwindStencil){
+        .coefficient=value->coefficient,.scale=scale,.slope=dx,.difference=difference,
+        .ratio=ratio,.delta=delta,.spacing=in->spacing[0],.second=second,.kink=e==0 && x==1};
+    if (base_out) *base_out=base;
+    if (de_out) *de_out=de;
+    return ALULA_CELL_OK;
+}
 
+AlulaCellStatus alula_upwind_prepare(const AlulaUpwindInput *in, AlulaUpwindValue *value,
+    AlulaUpwindStencil *stencil)
+{
+    return upwind_prepare(in,value,stencil,NULL,NULL);
+}
+
+AlulaCellStatus alula_streamtube_upwind(const AlulaUpwindInput *in, AlulaUpwindValue *value,
+    const AlulaUpwindInput *d, AlulaUpwindValue *dv)
+{
+    if (d && !dv) return ALULA_CELL_INPUT;
+    if (d) {
+        for (int i=0;i<3;++i)
+            if (!isfinite(d->speed[i])) return ALULA_CELL_INPUT;
+        for (int i=0;i<2;++i)
+            if (!isfinite(d->mach_sq[i]) || !isfinite(d->spacing[i])) return ALULA_CELL_INPUT;
+    }
+    AlulaUpwindStencil s;
+    double base,de;
+    AlulaCellStatus status=d?upwind_prepare(in,value,&s,&base,&de):alula_upwind_prepare(in,value,NULL);
+    if (status!=ALULA_CELL_OK || !d) return status;
     if (!isfinite(d->mucon) || !isfinite(d->mcrit) || !isfinite(d->gamma)
-        || (e == 0 && (x == 1 || d->mcrit != 0)) || (in->mucon == 0 && d->mucon != 0))
+        || s.kink || (in->mcrit == 1 && d->mcrit != 0) || (in->mucon == 0 && d->mucon != 0))
         return ALULA_CELL_INPUT;
     double dscale=(in->mucon < 0 ? -d->mucon : d->mucon)/in->gamma
-        -scale*(d->gamma/in->gamma);
-    double dr=(d->spacing[1]-ratio*d->spacing[0])/in->spacing[0];
-    double dd=-(d->speed[2]-d->speed[1])+(second ? ratio*(d->speed[1]-d->speed[0])+delta*dr : 0);
-    dv->coefficient=dscale*base+scale*(dx*(.5*d->mach_sq[0]+.5*d->mach_sq[1])-de*d->mcrit);
-    dv->correction=dv->coefficient*difference+value->coefficient*dd;
+        -s.scale*(d->gamma/in->gamma);
+    dv->coefficient=dscale*base+s.scale*(s.slope*(.5*d->mach_sq[0]+.5*d->mach_sq[1])-de*d->mcrit);
+    dv->correction=dv->coefficient*s.difference+s.coefficient*alula_upwind_difference_direction(&s,d);
     dv->speed=d->speed[2]+dv->correction;
     return finite_upwind(*dv) ? ALULA_CELL_OK : ALULA_CELL_NONFINITE;
 }

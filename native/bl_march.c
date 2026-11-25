@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#include "bl.h"
+#include "bl_internal.h"
 
 #include <float.h>
 #include <math.h>
@@ -7,6 +7,7 @@
 typedef struct {
     const AlulaBLContext *physics;
     const AlulaBLStation *previous;
+    AlulaBLPreparedStation upstream;
     AlulaBLEdge edge;
     AlulaBLRegime regime;
     double trip,exponent,mach_sq,scale;
@@ -57,7 +58,7 @@ static AlulaBLStation unpack(const March *m,const double x[3])
 static AlulaBLStatus residual(const March *m,const double x[3],double r[3],AlulaBLBlock *v)
 {
     AlulaBLStation s=unpack(m,x);
-    AlulaBLStatus code=alula_bl_interval(m->physics,m->previous,&s,m->regime,m->trip,m->exponent,v);
+    AlulaBLStatus code=alula_bl_prepared_interval(m->physics,&m->upstream,&s,m->regime,m->trip,m->exponent,v);
     if (code==ALULA_BL_OK) {
         r[0]=v->residual[1]; r[1]=v->residual[2];
         r[2]=variables(m)==3?m->scale*v->residual[0]:0;
@@ -117,9 +118,13 @@ static int jacobian(const March *m,const double x[3],const double r[3],int n,dou
     return 1;
 }
 
-static AlulaBLStatus solve(const March *m,double theta,double hk,double aux,
+static AlulaBLStatus solve(March *m,double theta,double hk,double aux,
     AlulaBLStation *s,AlulaBLBlock *v,AlulaBLMarchResult *report)
 {
+    if (m->regime!=ALULA_BL_SIMILARITY) {
+        AlulaBLStatus prepared=alula_bl_prepare_upstream(m->physics,m->previous,m->regime,&m->upstream);
+        if (prepared!=ALULA_BL_OK) return prepared;
+    }
     double x[3]={log(theta),log(hk-1),log(fmax(aux,1e-8))},r[3];
     if (m->inverse_hk>0) x[1]=log(m->edge.ue);
     if (m->interaction_thickness>0) x[0]=0;
@@ -183,6 +188,16 @@ static void publish(AlulaBLMarchResult *r,const AlulaBLBlock *v)
     ++r->completed;
 }
 
+static void record_edge_mismatch(AlulaBLMarchResult *r,size_t station,double ue,double euler_speed)
+{
+    double residual=fabs(ue-euler_speed);
+    if (residual>r->edge_residual) {
+        r->edge_residual=residual;
+        r->edge_mismatch_index=station;
+        r->euler_edge_speed=euler_speed;
+    }
+}
+
 AlulaBLMarchResult alula_bl_march_surface_controlled(const AlulaBLContext *c,
     const AlulaBLEdge *edges,size_t count,double trip,double exponent,
     const double *displacement,int local,AlulaBLStation *profile,AlulaBLRegime *regimes)
@@ -221,17 +236,20 @@ AlulaBLMarchResult alula_bl_march_surface_controlled(const AlulaBLContext *c,
             }
             if (displacement && (!local || separated)) m.interaction_thickness=displacement[i];
             r.status=solve(&m,theta,hk,aux,&current,&value,&r);
-            /* Keep the attached part at Euler speed. Switch to interaction
-             * only where the direct turbulent march needs it. */
+            /* Keep the attached part at Euler speed. At an explicit trip,
+             * let the mixed interval try the direct edge speed first. */
             if (local && !separated && r.status!=ALULA_BL_OK && displacement &&
-                displacement[i]>0 && regime==ALULA_BL_TURBULENT) {
+                displacement[i]>0 && !forced_here) {
                 separated=1;
                 m.interaction_thickness=displacement[i];
                 r.status=solve(&m,theta,hk,aux,&current,&value,&r);
             }
-            if (r.status!=ALULA_BL_OK && displacement && displacement[i]==0 && regime==ALULA_BL_TURBULENT) {
+            if (r.status!=ALULA_BL_OK && displacement && displacement[i]==0 && !forced_here) {
                 separated=1;
-                m.inverse_hk=fmax(2.6,hk);
+                /* XFOIL's laminar separation shape factor (xbl.f).
+                 * The transition check below still uses the e^N model. */
+                double separation_hk=regime==ALULA_BL_LAMINAR?3.8:2.6;
+                m.inverse_hk=fmax(separation_hk,hk);
                 r.status=solve(&m,theta,hk,aux,&current,&value,&r);
             }
             AlulaBLTransition selection={0};
@@ -247,13 +265,20 @@ AlulaBLMarchResult alula_bl_march_surface_controlled(const AlulaBLContext *c,
             if (regime==ALULA_BL_LAMINAR && (selection.active || forced_here)) {
                 m.regime=regime=ALULA_BL_TRANSITION;
                 r.status=solve(&m,theta,hk,.03,&current,&value,&r);
+                if (r.status!=ALULA_BL_OK && displacement && displacement[i]==0 && !m.inverse_hk) {
+                    /* A mixed interval can separate even when the upstream
+                     * laminar interval marched at the prescribed speed. */
+                    m.inverse_hk=fmax(3.8,prior.raw_hk);
+                    r.status=solve(&m,previous->theta,prior.raw_hk,.03,&current,&value,&r);
+                    separated=1;
+                }
                 if (r.status==ALULA_BL_OK) r.transition=value.transition;
             }
             if (r.status!=ALULA_BL_OK) return r;
         }
         profile[i]=current;
         regimes[i]=regime;
-        r.edge_residual=fmax(r.edge_residual,fabs(current.ue-edges[i].ue));
+        record_edge_mismatch(&r,i,current.ue,edges[i].ue);
         previous=profile+i;
         prior=value.downstream;
         publish(&r,&value);
@@ -275,22 +300,22 @@ AlulaBLMarchResult alula_bl_march_surface(const AlulaBLContext *c,
     return alula_bl_march_surface_interaction(c,edges,count,trip,exponent,NULL,profile,regimes);
 }
 
-AlulaBLMarchResult alula_bl_march_wake_interaction(const AlulaBLContext *c,
+AlulaBLMarchResult alula_bl_march_wake_join(const AlulaBLContext *c,
     const AlulaBLStation *upper,const AlulaBLStation *lower,
-    const AlulaBLEdge *edges,size_t count,const double *displacement,AlulaBLStation *profile)
+    const AlulaBLEdge *edges,size_t count,double join_gap,const double *displacement,AlulaBLStation *profile)
 {
     AlulaBLMarchResult r={.status=ALULA_BL_INVALID};
-    if (!c || !upper || !lower || !profile || !positive(upper->aux) || !positive(lower->aux) ||
+    if (!c || !upper || !lower || !profile || !(join_gap>=0) || !isfinite(join_gap) || !positive(upper->aux) || !positive(lower->aux) ||
         !profile_valid(edges,count,1)) return r;
     if (displacement) for (size_t i=1;i<count;++i)
         if (!(displacement[i-1]>=0) || !isfinite(displacement[i-1])) return r;
     double theta=upper->theta+lower->theta;
     if (!positive(theta)) return r;
     AlulaBLEdge first=edges[0];
-    AlulaBLStation start={first.s,theta,upper->delta_star+lower->delta_star+first.wake_gap,first.ue,
+    AlulaBLStation start={first.s,theta,upper->delta_star+lower->delta_star+join_gap,first.ue,
         (upper->aux*upper->theta+lower->aux*lower->theta)/theta,first.wake_gap};
     AlulaBLBlock v;
-    r.status=alula_bl_trailing_edge(c,upper,lower,&start,first.wake_gap,&v);
+    r.status=alula_bl_trailing_edge(c,upper,lower,&start,join_gap,&v);
     if (r.status!=ALULA_BL_OK) return r;
     profile[0]=start;
     publish(&r,&v);
@@ -309,11 +334,18 @@ AlulaBLMarchResult alula_bl_march_wake_interaction(const AlulaBLContext *c,
             r.status=solve(&m,previous->theta,hk,previous->aux,&next,&v,&r);
         }
         if (r.status!=ALULA_BL_OK) return r;
-        r.edge_residual=fmax(r.edge_residual,fabs(next.ue-edges[i].ue));
+        record_edge_mismatch(&r,i,next.ue,edges[i].ue);
         profile[i]=next;
         publish(&r,&v);
     }
     return r;
+}
+
+AlulaBLMarchResult alula_bl_march_wake_interaction(const AlulaBLContext *c,
+    const AlulaBLStation *upper,const AlulaBLStation *lower,
+    const AlulaBLEdge *edges,size_t count,const double *displacement,AlulaBLStation *profile)
+{
+    return alula_bl_march_wake_join(c,upper,lower,edges,count,edges && count?edges[0].wake_gap:0,displacement,profile);
 }
 
 AlulaBLMarchResult alula_bl_march_wake(const AlulaBLContext *c,

@@ -190,8 +190,15 @@ int alula_airfoil_grid_transfer(AlulaAirfoilGrid *target,AlulaAirfoilGrid *sourc
         !alula_airfoil_grid_state(target,&fs)) goto done;
     for (int g=0;g<=f->in.bodies;++g)
         transfer_passage(target,source,&fs,&ps,g,weight,nodes,interpolation);
-    if (alula_body_coordinates_seed_nodes(target->coordinates,target->packed,nodes))
-        ok=alula_airfoil_grid_admit_seed(target,residual)==ALULA_BODY_OK;
+    if (alula_body_coordinates_seed_nodes(target->coordinates,target->packed,nodes)) {
+        AlulaAirfoilGridReport quality;
+        if (alula_airfoil_grid_current_quality(target,&quality)) {
+            if (quality.invalid_cells) {
+                ok=alula_airfoil_grid_repair_seed(target,residual) &&
+                    alula_airfoil_grid_current_quality(target,&quality) && !quality.invalid_cells;
+            } else ok=alula_airfoil_grid_admit_seed(target,residual)==ALULA_BODY_OK;
+        }
+    }
 done:
     if (!ok) {
         alula_body_coordinates_restore(target->coordinates,chart);
@@ -199,4 +206,76 @@ done:
     }
     free(nodes);free(chart);free(work);
     return ok;
+}
+
+static double sample_values(const double *x,const double *y,int n,double target)
+{
+    if (n==1) return y[0];
+    Sample q=bracket(x,n,target);
+    return lerp(y[q.index],y[q.index+1],q.fraction);
+}
+
+static int remap_displacement(AlulaAirfoilGrid *f,AlulaAirfoilGrid *p,const double *from,double *to)
+{
+    for (int g=0;g<f->elements;++g) {
+        AlulaBodyCut coarse=p->cuts[g],fine=f->cuts[g];
+        int nc=coarse.trailing-coarse.leading+1,nf=fine.trailing-fine.leading+1;
+        for (int upper=0;upper<2;++upper) {
+            AlulaBodySurfaceView ps,fs;
+            if (!alula_body_coordinates_surface(p->coordinates,p->packed,g,upper,&ps) ||
+                !alula_body_coordinates_surface(f->coordinates,f->packed,g,upper,&fs)) return 0;
+            for (int i=0;i<nf;++i) to[i]=sample_values(ps.fractions,from,nc,fs.fractions[i]);
+            from+=nc;
+            to+=nf;
+        }
+        int nw=p->body->in.nx-coarse.trailing;
+        for (int i=fine.trailing+1;i<=f->body->in.nx;++i)
+            *to++=sample_values(p->stations+coarse.trailing+1,from,nw,f->stations[i]);
+        from+=nw;
+    }
+    return 1;
+}
+
+double alula_airfoil_grid_continue_displacement(AlulaAirfoilGrid *f,AlulaAirfoilGrid *p)
+{
+    if (!f || !p || f==p || !f->converged || !p->converged || !compatible(f,p)) return 0;
+    size_t n=alula_body_coordinates_displacement_count(f->coordinates);
+    size_t source_count=alula_body_coordinates_displacement_count(p->coordinates);
+    size_t packed_bytes=(size_t)f->body->size.rows*sizeof *f->packed;
+    size_t chart_count=alula_body_coordinates_checkpoint_count(f->coordinates);
+    double *work=malloc((3*n+source_count)*sizeof *work+packed_bytes);
+    AlulaPoint *chart=malloc(chart_count*sizeof *chart);
+    double fraction=0;
+    if (!work || !chart) goto done;
+    double *initial=work,*goal=initial+n,*trial=goal+n,*source=trial+n,*packed=source+source_count;
+    if (!alula_body_coordinates_get_displacement(f->coordinates,initial) ||
+        !alula_body_coordinates_get_displacement(p->coordinates,source) ||
+        !remap_displacement(f,p,source,goal)) goto done;
+    double step=.25;
+    for (int it=0;it<100 && fraction<1 && step>=1e-5;++it) {
+        double next=fmin(1,fraction+step);
+        for (size_t i=0;i<n;++i) trial[i]=lerp(initial[i],goal[i],next);
+        alula_body_coordinates_save(f->coordinates,chart);
+        memcpy(packed,f->packed,packed_bytes);
+        AlulaBodySolveResult previous=f->last_solve;
+        if (!alula_body_coordinates_set_displacement(f->coordinates,trial)) break;
+        AlulaBodySolveResult result=alula_airfoil_grid_solve(f,40,1e-9);
+        if (result.status!=ALULA_BODY_SOLVED) alula_airfoil_grid_repair(f,40,1e-9,0,&result);
+        if (result.status==ALULA_BODY_SOLVED) {
+            fraction=next;
+            step=fmin(.5,1.35*step);
+        } else {
+            alula_body_coordinates_restore(f->coordinates,chart);
+            memcpy(f->packed,packed,packed_bytes);
+            for (size_t i=0;i<n;++i) trial[i]=lerp(initial[i],goal[i],fraction);
+            alula_body_coordinates_set_displacement(f->coordinates,trial);
+            f->converged=1;
+            f->last_solve=previous;
+            step*=.5;
+        }
+    }
+done:
+    free(chart);
+    free(work);
+    return fraction;
 }

@@ -2,6 +2,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "body_newton.h"
 #include "body_chart.h"
+#include "body_internal.h"
 
 #include <float.h>
 #include <math.h>
@@ -103,6 +104,34 @@ static void emit_vector(const double *v,int n)
     for(int i=0;i<n;++i) printf("%.17g%c",v[i],i==n-1?'\n':' ');
 }
 
+/* Each BL sample uses one of the two outer tubes in its passage. Compare
+ * the reduced decode against the full chart at the same packed state. */
+static int check_edge_state(AlulaBodyCoordinates *coordinates,const AlulaBodyInput *in,AlulaBodySize size,
+    const double *x,const double *physical,AlulaPoint *nodes,double *gas)
+{
+    AlulaBodyState edge;
+    if (!alula_body_coordinates_edge_state(coordinates,x,nodes,gas,&edge)) return 0;
+    AlulaBodyPhysicalLayout p=alula_body_physical_layout(size);
+    if (memcmp(edge.mass,physical+p.mass,(size_t)size.tubes*sizeof(double))) return 0;
+    int first_node=0,first_tube=0;
+    for (int g=0;g<=in->bodies;++g) {
+        int tubes=in->tubes[g];
+        for (int i=0;i<=in->nx;++i) {
+            for (int j=0;j<=tubes;++j) {
+                if (j>1 && j<tubes-1) continue;
+                int k=first_node+i*(tubes+1)+j;
+                if (nodes[k].x!=physical[2*k] || nodes[k].y!=physical[2*k+1]) return 0;
+            }
+            if (i==in->nx) continue;
+            int first=i*size.tubes+first_tube,last=first+tubes-1;
+            if (edge.density[first]!=physical[p.density+first] || edge.density[last]!=physical[p.density+last]) return 0;
+        }
+        first_node+=(in->nx+1)*(tubes+1);
+        first_tube+=tubes;
+    }
+    return 1;
+}
+
 static int run_coordinates(AlulaBody *b,const AlulaBodyInput *in)
 {
     AlulaBodySize s=alula_body_size(b);
@@ -150,6 +179,7 @@ static int run_coordinates(AlulaBody *b,const AlulaBodyInput *in)
     AlulaBodyChart chart=alula_body_coordinates_chart(coordinates);
     solver=alula_body_newton_create(b,&chart);
     if(!solver || !chart.decode(chart.context,x,before,NULL) ||
+        !check_edge_state(coordinates,in,s,x,before,raw,after) ||
         !alula_body_newton_product(solver,x,direction,product) ||
         !chart.rebase(chart.context,x) || !chart.decode(chart.context,x,after,NULL)) goto done;
     double error=0;
@@ -160,6 +190,14 @@ static int run_coordinates(AlulaBody *b,const AlulaBodyInput *in)
     AlulaBodySolveResult r=alula_body_newton_solve(solver,x,iterations,tolerance);
     double elapsed=milliseconds()-begin;
     if(!chart.decode(chart.context,x,after,NULL)) goto done;
+    if (r.status==ALULA_BODY_SOLVED) {
+        if (!alula_body_newton_prepare(solver,after)) goto done;
+        double density=after[p.density];
+        after[p.density]=0;
+        if (alula_body_newton_prepare(solver,after)) goto done;
+        after[p.density]=density;
+        if (!alula_body_newton_prepare(solver,after)) goto done;
+    }
     printf("%d %d %d %d %.17g %.17g %.17g\n",r.status,r.iterations,r.backtracks,r.colors,r.norm,error,elapsed);
     emit_vector(after,p.size);
     emit_vector(x,s.rows);
@@ -214,10 +252,98 @@ static int check_sparse_reuse(void)
     return ok?0:1;
 }
 
+static int check_sparse_batch(void)
+{
+    const AlulaSparseEntry entries[]={{0,0},{1,1},{2,2}};
+    const double rhs[]={0,0,0, 1,2,0, 0,0,3, -2,0,4};
+    const double diagonal[][3]={{2,3,4},{2.002,3,4.04},{.25,3,7}};
+    AlulaSparse *m=alula_sparse_create(3,entries,3,NULL);
+    if (!m) return 1;
+    double *a=alula_sparse_values(m),x[12];
+    int ok=1;
+    for (int stage=0;stage<3 && ok;++stage) {
+        memcpy(a,diagonal[stage],3*sizeof *a);
+        ok=alula_sparse_solve_batch(m,4,rhs,x);
+        for (int i=0;i<12 && ok;++i) ok=fabs(a[i%3]*x[i]-rhs[i])<=4e-10;
+    }
+    a[2]=0;
+    ok=ok && !alula_sparse_solve_batch(m,4,rhs,x);
+    alula_sparse_free(m);
+    if (!ok) fputs("Sparse batched right-hand side regression failed.\n",stderr);
+    return ok?0:1;
+}
+
+/* A cyclic matrix forces a single triangular block with pivoting and unequal
+ * row scales. Include zero columns among the active columns during refinement. */
+static int check_sparse_wide_batch(void)
+{
+    enum { n=7, width=ALULA_SPARSE_BATCH };
+    AlulaSparseEntry entries[2*n];
+    int slots[2*n];
+    for (int i=0;i<n;++i) {
+        entries[2*i]=(AlulaSparseEntry){i,i};
+        entries[2*i+1]=(AlulaSparseEntry){i,(i+1)%n};
+    }
+    AlulaSparse *m=alula_sparse_create(n,entries,2*n,slots);
+    if (!m) return 1;
+    double *a=alula_sparse_values(m),expected[n*width],rhs[n*width],x[n*width];
+    int ok=1;
+    for (int count=width;count>=5 && ok;--count) {
+        for (int i=0;i<n;++i) {
+            a[slots[2*i]]=(i+1)*.0001;
+            double scale=count>width/2?2:9;
+            a[slots[2*i+1]]=(i+1)*(scale+.001*count);
+        }
+        for (int j=0;j<count;++j) {
+            for (int i=0;i<n;++i) expected[j*n+i]=j%4?(double)(j-2*i):0;
+            alula_sparse_product(m,expected+j*n,rhs+j*n);
+        }
+        ok=alula_sparse_solve_batch(m,count,rhs,x);
+        for (int k=0;k<count*n && ok;++k) ok=fabs(x[k]-expected[k])<1e-8;
+    }
+    ok=ok && alula_sparse_stats(m).refactor_count>0;
+    rhs[5*n-1]=NAN;
+    ok=ok && !alula_sparse_solve_batch(m,5,rhs,x);
+    alula_sparse_free(m);
+    if (!ok) fputs("Wide sparse substitution regression failed.\n",stderr);
+    return ok?0:1;
+}
+
+/* Exercise reused tangent storage with disjoint inlet, interior and outlet
+ * perturbations. Global strengths and wake-width terms still affect all rows. */
+static int check_local_directions(AlulaBody *b,const AlulaBodyState *state,AlulaBodyState direction,
+    AlulaPoint *nodes,double *full,double *local)
+{
+    direction.nodes=nodes;
+    direction.density=NULL;
+    direction.mass=NULL;
+    memset(nodes,0,(size_t)b->size.nodes*sizeof *nodes);
+    int nx=b->in.nx;
+    int stations[]={0,nx,nx/2,-1};
+    for (size_t k=0;k<sizeof stations/sizeof *stations;++k) {
+        int i=stations[k];
+        int first=nx,end=nx;
+        if (i>=0) {
+            nodes[b->node[0]+i*(b->tubes[0]+1)]=(AlulaPoint){.15,-.07};
+            first=i>0 ? i-1 : 0;
+            end=i<nx ? i+1 : nx;
+        }
+        if (alula_body_apply_prepared(b,state,&direction,first,end,local,NULL)!=ALULA_BODY_OK ||
+            alula_body_apply_prepared(b,state,&direction,0,nx,full,NULL)!=ALULA_BODY_OK) return 0;
+        for (int r=0;r<b->size.rows;++r) if (local[r]!=full[r]) {
+            fprintf(stderr,"Local Jacobian mismatch at station %d, equation %d\n",i,r);
+            return 0;
+        }
+        if (i>=0) nodes[b->node[0]+i*(b->tubes[0]+1)]=(AlulaPoint){0};
+    }
+    return 1;
+}
+
 int main(int argc,char **argv)
 {
     if (argc==2 && !strcmp(argv[1],"--check-sparse"))
-        return check_sparse_cancellation() || check_sparse_reuse();
+        return check_sparse_cancellation() || check_sparse_reuse() || check_sparse_batch() ||
+            check_sparse_wide_batch();
     AlulaBodyInput in={0};
     int mode, repeat, jacobian, tubes[7];
     AlulaBodyCut cuts[6];
@@ -284,6 +410,7 @@ int main(int argc,char **argv)
         putchar('\n');
         for (int i=0;i<size.rows;++i) printf("%.17g%c",res[i],i==size.rows-1?'\n':' ');
         if (jacobian) for (int i=0;i<size.rows;++i) printf("%.17g%c",product[i],i==size.rows-1?'\n':' ');
+        if (jacobian && !check_local_directions(b,&state,direction,node_directions,res,product)) goto done;
     }
     result=0;
 done:

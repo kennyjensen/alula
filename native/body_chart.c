@@ -20,7 +20,7 @@ typedef struct {
 typedef struct {
     int stations, material;
     AlulaContourSpline curve;
-    double *fraction[2], *thickness[2], *width;
+    double *fraction[2], *thickness[2], *width, *arc_lengths;
     double stagnation;
 } Surface;
 
@@ -89,7 +89,7 @@ static AlulaPoint unit_derivative(AlulaPoint v,AlulaPoint t,double length)
 static void surface_free(Surface *s)
 {
     alula_contour_spline_free(&s->curve);free(s->fraction[0]);free(s->fraction[1]);
-    free(s->thickness[0]);free(s->thickness[1]);free(s->width);
+    free(s->thickness[0]);free(s->thickness[1]);free(s->width);free(s->arc_lengths);
 }
 
 static int surface_create(Surface *s,const AlulaBodySurface *in,AlulaBodyCut cut,int nx,int displaced)
@@ -100,6 +100,11 @@ static int surface_create(Surface *s,const AlulaBodySurface *in,AlulaBodyCut cut
     s->stations=stations;s->stagnation=in->stagnation;s->material=in->material_wake;
     if (!alula_contour_spline_create(&s->curve,in->surface,n) ||
         !(s->stagnation>0 && s->stagnation<s->curve.arc[n-1])) return 0;
+    if (displaced) {
+        s->arc_lengths=malloc((size_t)n*sizeof *s->arc_lengths);
+        if (!s->arc_lengths) return 0;
+        alula_contour_arc_build(&s->curve,s->arc_lengths);
+    }
 
     for(int side=0;side<2;++side) {
         const double *f=side?in->upper_fraction:in->lower_fraction;
@@ -213,7 +218,7 @@ static Node shift(const AlulaBodyCoordinates *c,int b,int i,int side)
     return d;
 }
 
-static int coordinates(const AlulaBodyCoordinates *c,const double *x,int derivatives)
+static int coordinates(const AlulaBodyCoordinates *c,const double *x,int derivatives,int edges_only)
 {
     AlulaBody *b=c->body;
     int nx=b->in.nx,top=b->in.bodies;
@@ -229,28 +234,52 @@ static int coordinates(const AlulaBodyCoordinates *c,const double *x,int derivat
                 if(!wall_node(c,g,side,i-b->cuts[g].leading,stag[g],c->raw+k,c->wall+k,derivatives)) return 0;
             }
     }
-    for(int k=0;k<b->size.nodes;++k) {
-        NodeSpec v=c->spec[k];
-        if(v.wall) {c->decoded[k]=c->wall[k];continue;}
-        if(v.canonical!=k) {
-            c->raw[k]=c->raw[v.canonical];c->decoded[k]=c->raw[k];continue;
+    for (int g=0;g<=top;++g) for (int i=0;i<=nx;++i) {
+        /* All interior nodes on the same crossline interpolate the same
+         * two material-wall shifts. Compute each shift once per passage. */
+        Node lower={0},upper={0};
+        if (!c->walls_only) {
+            lower=shift(c,g-1,i,1);
+            upper=shift(c,g<top?g:-1,i,0);
         }
-        Node p={.p=c->origin[k]};
-        if(!c->walls_only) {
-            if(v.cut>=0) {
-                Node d=shift(c,v.cut,v.station,v.group!=v.cut);
-                combine(&p,&d,1);
+        int start=id(c,g,i,0);
+        int tubes=b->tubes[g];
+        for (int j=0;j<=tubes;++j) {
+            if (edges_only && j==2 && tubes>3) j=tubes-1;
+            int k=start+j;
+            NodeSpec v=c->spec[k];
+            if (v.wall) {c->decoded[k]=c->wall[k];continue;}
+            if (v.canonical!=k) {
+                c->decoded[k]=c->raw[k]=c->raw[v.canonical];
+                continue;
+            }
+            AlulaPoint direction=scale(c->normal[v.column-b->size.density],c->scale);
+            const Node *cut_shift=v.cut==g?&upper:&lower;
+            if (!derivatives) {
+                AlulaPoint p=c->origin[k];
+                if (!c->walls_only) {
+                    if (v.cut>=0) p=add(p,cut_shift->p);
+                    else {
+                        p=add(p,scale(lower.p,1-c->eta[k]));
+                        p=add(p,scale(upper.p,c->eta[k]));
+                    }
+                }
+                c->decoded[k].p=c->raw[k].p=add(p,scale(direction,x[v.column]));
+                c->decoded[k].count=c->raw[k].count=0;
             } else {
-                int left=v.group-1,right=v.group<top?v.group:-1;
-                Node l=shift(c,left,v.station,1);
-                Node r=shift(c,right,v.station,0);
-                combine(&p,&l,1-c->eta[k]);combine(&p,&r,c->eta[k]);
+                Node p={.p=c->origin[k]};
+                if (!c->walls_only) {
+                    if (v.cut>=0) combine(&p,cut_shift,1);
+                    else {
+                        combine(&p,&lower,1-c->eta[k]);
+                        combine(&p,&upper,c->eta[k]);
+                    }
+                }
+                p.p=add(p.p,scale(direction,x[v.column]));
+                term(&p,v.column,direction);
+                c->decoded[k]=c->raw[k]=p;
             }
         }
-        AlulaPoint direction=scale(c->normal[v.column-b->size.density],c->scale);
-        p.p=add(p.p,scale(direction,x[v.column]));
-        if(derivatives) term(&p,v.column,direction);
-        c->decoded[k]=c->raw[k]=p;
     }
     if(!b->in.displaced) return 1;
     for(int g=0;g<top;++g) {
@@ -368,13 +397,58 @@ static double node_slope(const Node *p,int col,int axis)
     return 0;
 }
 
+static int decode_masses(const AlulaBodyCoordinates *c,const double *x,double *mass,double *derivatives)
+{
+    int top=c->body->in.bodies;
+    double cap[MAX_BODIES+2];
+    cap[0]=c->level[0];cap[top+1]=c->level[top+1];
+    for(int g=0;g<top;++g)
+        cap[g+1]=c->level[g+1]+(c->capture[g]>=0 ? c->span*x[c->capture[g]]:0);
+    for(int g=0;g<=top;++g) {
+        double amount=cap[g+1]-cap[g];
+        if(!positive(amount)) return 0;
+        for(int j=c->body->column[g];j<c->body->column[g+1];++j) {
+            mass[j]=c->mass_fraction[j]*amount;
+            if(derivatives) for(int k=c->starts[c->physical.mass+j];k<c->starts[c->physical.mass+j+1];++k)
+                derivatives[k]=(g>0 && c->columns[k]==c->capture[g-1] ? -1 : 1)*c->span*c->mass_fraction[j];
+        }
+    }
+    return 1;
+}
+
+int alula_body_coordinates_edge_state(AlulaBodyCoordinates *c,const double *x,AlulaPoint *nodes,
+    double *gas,AlulaBodyState *state)
+{
+    if (!c || !x || !nodes || !gas || !state || !coordinates(c,x,0,1)) return 0;
+    const AlulaBody *b=c->body;
+    double *mass=gas+b->size.density;
+    if (!decode_masses(c,x,mass,NULL)) return 0;
+    for (int g=0;g<=b->in.bodies;++g) {
+        int tubes=b->tubes[g];
+        for (int i=0;i<=b->in.nx;++i) {
+            int k=id(c,g,i,0);
+            nodes[k]=c->decoded[k].p;
+            nodes[k+1]=c->decoded[k+1].p;
+            nodes[k+tubes-1]=c->decoded[k+tubes-1].p;
+            nodes[k+tubes]=c->decoded[k+tubes].p;
+            if (i<b->in.nx) {
+                int first=index_section(b,g,i,0),last=first+tubes-1;
+                gas[first]=exp(x[first]);
+                gas[last]=exp(x[last]);
+            }
+        }
+    }
+    *state=(AlulaBodyState){.nodes=nodes,.density=gas,.mass=mass};
+    return 1;
+}
+
 static int decode(void *context,const double *x,double *physical,double *derivatives)
 {
     AlulaBodyCoordinates *c=context;
     AlulaBody *b=c->body;
     AlulaBodyPhysicalLayout p=c->physical;
     int top=b->in.bodies;
-    if(!coordinates(c,x,derivatives!=NULL)) return 0;
+    if(!coordinates(c,x,derivatives!=NULL,0)) return 0;
     for(int i=0;i<b->size.nodes;++i) {
         const Node *v=c->decoded+i;
         physical[2*i]=v->p.x;
@@ -391,20 +465,7 @@ static int decode(void *context,const double *x,double *physical,double *derivat
         physical[scalar]=rho;
         if(derivatives) derivatives[c->starts[scalar]]=rho;
     }
-    double cap[MAX_BODIES+2];
-    cap[0]=c->level[0];cap[top+1]=c->level[top+1];
-    for(int g=0;g<top;++g)
-        cap[g+1]=c->level[g+1]+(c->capture[g]>=0 ? c->span*x[c->capture[g]]:0);
-    for(int g=0;g<=top;++g) {
-        double amount=cap[g+1]-cap[g];
-        if(!positive(amount)) return 0;
-        for(int j=c->body->column[g];j<c->body->column[g+1];++j) {
-            int scalar=p.mass+j;
-            physical[scalar]=c->mass_fraction[j]*amount;
-            if(derivatives) for(int k=c->starts[scalar];k<c->starts[scalar+1];++k)
-                derivatives[k]=(g>0 && c->columns[k]==c->capture[g-1] ? -1 : 1)*c->span*c->mass_fraction[j];
-        }
-    }
+    if (!decode_masses(c,x,physical+p.mass,derivatives)) return 0;
     for(int k=0;k<4;++k) {
         int scalar=p.strength+k;
         double scale_length=k<2?c->scale:c->scale*c->scale;
@@ -416,11 +477,11 @@ static int decode(void *context,const double *x,double *physical,double *derivat
     return 1;
 }
 
-static int rebase(void *context,double *x)
+static int rebase_decoded(void *context,double *x)
 {
     AlulaBodyCoordinates *c=context;
     AlulaBody *b=c->body;
-    if(!coordinates(c,x,0) || !normals(c,c->next_normal)) return 0;
+    if(!normals(c,c->next_normal)) return 0;
     for(int k=0;k<b->size.nodes;++k) {
         NodeSpec v=c->spec[k];
         if(v.wall || v.canonical!=k) continue;
@@ -430,6 +491,11 @@ static int rebase(void *context,double *x)
         c->normal[normal_index]=c->next_normal[normal_index];
     }
     return 1;
+}
+
+static int rebase(void *context,double *x)
+{
+    return coordinates(context,x,0,0) && rebase_decoded(context,x);
 }
 
 AlulaBodyCoordinates *alula_body_coordinates_create(AlulaBody *b,const AlulaBodyCoordinateInput *in)
@@ -502,7 +568,7 @@ AlulaBodyCoordinates *alula_body_coordinates_create(AlulaBody *b,const AlulaBody
                     norm(sub(c->wall_anchor[k].p,c->origin[k]))>1e-10*c->scale) goto fail;
             }
     }
-    if(!coordinates(c,x,1) || !normals(c,c->normal) || !map_create(c)) goto fail;
+    if(!coordinates(c,x,1,0) || !normals(c,c->normal) || !map_create(c)) goto fail;
     free(x);return c;
 fail:
     free(x);alula_body_coordinates_free(c);return NULL;
@@ -511,7 +577,7 @@ fail:
 AlulaBodyChart alula_body_coordinates_chart(AlulaBodyCoordinates *c)
 {
     return c ? (AlulaBodyChart){.starts=c->starts,.columns=c->columns,.decode=decode,.context=c,
-        .equation_order=c->equations,.rebase=rebase} : (AlulaBodyChart){0};
+        .equation_order=c->equations,.rebase=rebase,.rebase_decoded=rebase_decoded} : (AlulaBodyChart){0};
 }
 
 int alula_body_coordinates_stagnation_column(const AlulaBodyCoordinates *c,int body)
@@ -547,7 +613,7 @@ int alula_body_coordinates_seed_state(AlulaBodyCoordinates *c,double *x,
 
 int alula_body_coordinates_seed_nodes(AlulaBodyCoordinates *c,double *x,const AlulaPoint *nodes)
 {
-    if (!coordinates(c,x,0)) return 0;
+    if (!coordinates(c,x,0,0)) return 0;
     for (int k=0;k<c->body->size.nodes;++k) {
         NodeSpec v=c->spec[k];
         if (v.wall || v.canonical!=k) continue;
@@ -564,7 +630,7 @@ int alula_body_coordinates_surface(const AlulaBodyCoordinates *c,const double *x
     double arc=s->curve.arc[s->curve.count-1];
     double position=s->stagnation+(c->stag[element]>=0?arc*x[c->stag[element]]:0);
     if (!(position>0 && position<arc)) return 0;
-    *view=(AlulaBodySurfaceView){&s->curve,s->fraction[upper],position,s->stagnation};
+    *view=(AlulaBodySurfaceView){&s->curve,s->fraction[upper],position,s->stagnation,s->arc_lengths};
     return 1;
 }
 

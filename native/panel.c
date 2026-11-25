@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "panel_internal.h"
+#include "dense.h"
 
 #include <float.h>
 #include <math.h>
@@ -29,64 +30,6 @@ void alula_panel_vortex(AlulaPoint point, const Panel *p, int self, AlulaPoint q
         -end_y*p->tangent.y + end_x*p->tangent.x
     };
 }
-
-#ifdef ALULA_LAPACK
-/* Fortran LP64 LAPACK ABI. Matrix storage is row major, so solve its transpose. */
-extern void dgetrf_(const int *, const int *, double *, const int *, int *, int *);
-extern void dgetrs_(const char *, const int *, const int *, const double *,
-    const int *, const int *, double *, const int *, int *);
-
-int alula_panel_factor(double *a, double *b, size_t n)
-{
-    int size = (int)n, info, two = 2;
-    int *pivot = malloc(n * sizeof *pivot);
-    if (!pivot) return 0;
-    dgetrf_(&size, &size, a, &size, pivot, &info);
-    if (!info) dgetrs_("T", &size, &two, a, &size, pivot, b, &size, &info);
-    free(pivot);
-    return info == 0;
-}
-#else
-int alula_panel_factor(double *a, double *b, size_t n)
-{
-    for (size_t k = 0; k < n; ++k) {
-        size_t pivot = k;
-        for (size_t i = k+1; i < n; ++i)
-            if (fabs(a[i*n+k]) > fabs(a[pivot*n+k])) pivot = i;
-        if (!(fabs(a[pivot*n+k]) > DBL_MIN)) return 0;
-        if (pivot != k) {
-            for (size_t j = k; j < n; ++j) {
-                double tmp = a[k*n+j];
-                a[k*n+j] = a[pivot*n+j];
-                a[pivot*n+j] = tmp;
-            }
-            for (size_t rhs = 0; rhs < 2; ++rhs) {
-                double *column = b+rhs*n;
-                double tmp = column[k];
-                column[k] = column[pivot];
-                column[pivot] = tmp;
-            }
-        }
-        const double *row = a+k*n;
-        for (size_t i = k+1; i < n; ++i) {
-            double *target = a+i*n;
-            double scale = target[k]/row[k];
-            for (size_t j = k+1; j < n; ++j) target[j] -= scale*row[j];
-            b[i] -= scale*b[k];
-            b[n+i] -= scale*b[n+k];
-        }
-    }
-    for (size_t i = n; i-- > 0;) {
-        for (size_t j = i+1; j < n; ++j) {
-            b[i] -= a[i*n+j]*b[j];
-            b[n+i] -= a[i*n+j]*b[n+j];
-        }
-        b[i] /= a[i*n+i];
-        b[n+i] /= a[i*n+i];
-    }
-    return 1;
-}
-#endif
 
 AlulaPanelSystem *alula_panel_allocate(size_t count)
 {
@@ -127,31 +70,38 @@ void alula_panel_free(AlulaPanelSystem *system)
     free(system);
 }
 
-AlulaPanelSystem *alula_panel_prepare(const AlulaContour *contours,
-    size_t count, double chord, AlulaPoint moment)
+int alula_panel_dimensions(const AlulaContour *contours,size_t count,size_t *total,size_t *wet)
 {
-    if (!contours || !count || count > 6 || !(chord > 0) || !isfinite(chord)
-        || !isfinite(moment.x) || !isfinite(moment.y)) return NULL;
+    if (!contours || !count || count>6) return 0;
     size_t n = 0, wetted = 0;
-    int streamfunction = 0;
     for (size_t e = 0; e < count; ++e) {
         const AlulaContour *c = contours+e;
-        if (!c->points || c->count < 4 || c->count > ALULA_PANEL_MAX_TOTAL+1) return NULL;
+        if (!c->points || c->count < 4 || c->count > ALULA_PANEL_MAX_TOTAL+1) return 0;
         size_t panels = c->count-1;
         n += panels;
         if (c->finite_base) {
             if (c->upper_index >= panels || c->lower_index >= panels ||
-                c->upper_index == c->lower_index) return NULL;
+                c->upper_index == c->lower_index) return 0;
             size_t surface = (c->lower_index+panels-c->upper_index)%panels;
-            if (surface < 3 || c->count < 9) return NULL;
+            if (surface < 3 || c->count < 9) return 0;
             wetted += surface;
-            streamfunction = 1;
         } else {
             wetted += panels;
         }
     }
-    if (n > ALULA_PANEL_MAX_TOTAL || wetted > ALULA_PANEL_MAX_WETTED) return NULL;
-    if (streamfunction) return alula_panel_prepare_streamfunction(contours, count, n, chord, moment);
+    if (n > ALULA_PANEL_MAX_TOTAL || wetted > ALULA_PANEL_MAX_WETTED) return 0;
+    *total=n;
+    *wet=wetted;
+    return 1;
+}
+
+AlulaPanelSystem *alula_panel_prepare(const AlulaContour *contours,
+    size_t count, double chord, AlulaPoint moment)
+{
+    size_t n,wetted;
+    if (!(chord>0) || !isfinite(chord) || !isfinite(moment.x) || !isfinite(moment.y) ||
+        !alula_panel_dimensions(contours,count,&n,&wetted)) return NULL;
+    if (wetted<n) return alula_panel_prepare_streamfunction(contours, count, n, wetted, chord, moment);
     size_t size = n+count;
     AlulaPanelSystem *system = alula_panel_allocate(n);
     if (!system) return NULL;
@@ -206,7 +156,7 @@ AlulaPanelSystem *alula_panel_prepare(const AlulaContour *contours,
         }
     }
     memcpy(factors, a, size*size*sizeof *a);
-    if (!alula_panel_factor(factors, b, size)) goto fail;
+    if (!alula_dense_solve(factors, b, size, 2)) goto fail;
     for (size_t i = 0; i < 2*size; ++i)
         if (!isfinite(b[i])) goto fail;
 

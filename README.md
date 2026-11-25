@@ -52,6 +52,19 @@ physical accuracy. Check mesh sensitivity and suitable reference data before
 relying on a prediction. Alula is an independent project, not an official MSES
 release.
 
+## Native CPU solver
+
+Run `make -C native gui` to open the Ubuntu desktop interface (requires
+`python3-tk`). It plots surface pressure, boundary-layer displacement thickness, loads and residuals as the C
+solver advances. Choose a bundled airfoil or load your own contours.
+
+On Ubuntu, run `make -C native` to build the incompressible panel and
+compressible streamtube Euler solvers. Both support integral boundary layers.
+The native executables accept airfoil
+contours on standard input and write JSON results. The native guide includes
+the input format, convergence checks, and worked examples for RAE 2822 and
+NLR 7301 with flap. [Native solver guide](native/README.md)
+
 ## Codebase guide
 
 | Location | Responsibility |

@@ -17,6 +17,7 @@ typedef struct {
     AlulaCrosslinePlacement crosslines;
     AlulaBodyMode mode;
     int ismom; /* 1 through 4 for hybrid mode */
+    double surface_uniformity; /* 0: cosine station spacing, 1: uniform */
 } AlulaAirfoilGridInput;
 
 typedef enum {
@@ -38,6 +39,7 @@ typedef struct {
 AlulaAirfoilGrid *alula_airfoil_grid_create(const AlulaContour *contours, size_t count,
     const AlulaAirfoilGridInput *input, AlulaAirfoilGridStatus *status, AlulaAirfoilGridReport *report);
 AlulaBodySize alula_airfoil_grid_size(const AlulaAirfoilGrid *grid);
+double alula_airfoil_grid_mach(const AlulaAirfoilGrid *grid);
 const AlulaBodyCut *alula_airfoil_grid_cuts(const AlulaAirfoilGrid *grid);
 const int *alula_airfoil_grid_tubes(const AlulaAirfoilGrid *grid);
 /* Input contour index for a body in grid passage order, or -1. */
@@ -45,14 +47,29 @@ int alula_airfoil_grid_contour_index(const AlulaAirfoilGrid *grid,int body);
 /* View the current physical state. Arrays are valid until the next solve,
  * state query, or free. */
 int alula_airfoil_grid_state(AlulaAirfoilGrid *grid, AlulaBodyState *state);
+/* Measure the current grid, including its invalid cell locations. This
+ * populates geometry fields only. */
+int alula_airfoil_grid_current_quality(AlulaAirfoilGrid *grid,AlulaAirfoilGridReport *report);
 typedef struct { double cl,cm,pressure_drag,cx,cy; } AlulaAirfoilPressureLoads;
+typedef enum {
+    ALULA_PRESSURE_UPPER, ALULA_PRESSURE_LOWER, ALULA_PRESSURE_BASE
+} AlulaAirfoilPressurePart;
+typedef void (*AlulaAirfoilPressureVisitor)(void *context,int contour,
+    AlulaAirfoilPressurePart part,AlulaPoint point,double cp);
 /* Integrate the current converged Euler interface pressures on the
  * material surface. Retained finite-base segments interpolate TE pressure. */
 int alula_airfoil_grid_pressure_loads(AlulaAirfoilGrid *grid,AlulaAirfoilPressureLoads *loads);
+/* Optionally visit the same samples used for the load integral. Surface
+ * samples run from stagnation to trailing edge, base samples from lower to
+ * upper edge. Contour indices refer to the caller's input order. The visitor
+ * must not reenter the grid API on the same grid. */
+int alula_airfoil_grid_pressure_results(AlulaAirfoilGrid *grid,AlulaAirfoilPressureLoads *loads,
+    AlulaAirfoilPressureVisitor visit,void *context);
 AlulaBodySolveResult alula_airfoil_grid_solve(AlulaAirfoilGrid *grid, int iterations, double tolerance);
 /* Seed a finer grid from a converged grid with the same geometry, operating
- * point and domain. The target still requires a solve. Failure preserves
- * the target's original packed state and chart. */
+ * point and domain. Successful transfers have a convex grid and an
+ * admissible gas state. Failure preserves the target's original packed
+ * state and chart. */
 int alula_airfoil_grid_transfer(AlulaAirfoilGrid *target,AlulaAirfoilGrid *source,double geometry_weight);
 void alula_airfoil_grid_free(AlulaAirfoilGrid *grid);
 

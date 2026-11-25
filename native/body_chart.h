@@ -38,11 +38,17 @@ void alula_body_coordinates_seed_circulation(const AlulaBodyCoordinates *coordin
  * candidate seed. The material wall locations keep their contour constraint. */
 int alula_body_coordinates_seed_state(AlulaBodyCoordinates *coordinates,double *packed,
     const double *stagnation,const double *passage_mass,const AlulaBodyState *source);
+/* Decode only the cells touching either passage bank for BL edge probes.
+ * nodes and gas need size.nodes points and size.density + size.tubes doubles.
+ * The returned state is valid only at those banks. */
+int alula_body_coordinates_edge_state(AlulaBodyCoordinates *coordinates,const double *packed,
+    AlulaPoint *nodes,double *gas,AlulaBodyState *state);
 int alula_body_coordinates_seed_nodes(AlulaBodyCoordinates *coordinates,double *packed,const AlulaPoint *nodes);
 typedef struct {
     const AlulaContourSpline *curve;
     const double *fractions;
     double stagnation,initial_stagnation;
+    const double *arc_lengths; /* Cumulative spline length for displacement-enabled bodies. */
 } AlulaBodySurfaceView;
 int alula_body_coordinates_surface(const AlulaBodyCoordinates *coordinates,const double *packed,
     int element,int upper,AlulaBodySurfaceView *surface);

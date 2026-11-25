@@ -2,22 +2,28 @@
 // C port of Alula's integral BL kernels in src/viscous/integral.js and
 // src/viscous/xfoil/xblsys.js (Vibefoil JS port by Kenny Jensen).
 // Derived from XFOIL xblsys.f, Copyright (C) 2000 Mark Drela.
-#include "bl.h"
+#include "bl_internal.h"
 
 #include <float.h>
 #include <math.h>
 
-typedef struct {
-    AlulaBLStation input;
-    AlulaBLProperties props;
-    double d,hc,us,thickness;
-} Station;
+typedef AlulaBLPreparedStation Station;
 
 static double square(double x) { return x*x; }
 static double cube(double x) { return x*x*x; }
 static double mean(double a,double b) { return .5*(a+b); }
 static double weighted(double a,double b,double f) { return (1-f)*a+f*b; }
 static int positive(double v) { return v>0 && isfinite(v); }
+
+double alula_bl_dead_air(double width,double tangent_cross,double distance)
+{
+    if (width<=0 || distance>=2.5*width) return 0;
+    double limit=1.2;
+    double slope=fabs(tangent_cross)>=limit/hypot(1,limit)?copysign(limit,tangent_cross):
+        tangent_cross/sqrt(1-tangent_cross*tangent_cross);
+    double z=1-distance/(2.5*width),shape=3+2.5*slope;
+    return width*(shape+(1-shape)*z)*z*z;
+}
 
 int alula_bl_context(AlulaBLContext *ctx,double reynolds,double mach,double gamma,double ncrit)
 {
@@ -365,7 +371,16 @@ static AlulaBLStatus mixed(const AlulaBLContext *c,const Station *a,Station *b,d
     return ALULA_BL_OK;
 }
 
-AlulaBLStatus alula_bl_interval(const AlulaBLContext *c,const AlulaBLStation *upstream,
+AlulaBLStatus alula_bl_prepare_upstream(const AlulaBLContext *c,const AlulaBLStation *upstream,
+    AlulaBLRegime regime,Station *prepared)
+{
+    AlulaBLStatus status=kinematics(c,upstream,prepared);
+    if (status!=ALULA_BL_OK) return status;
+    return closure(prepared,regime==ALULA_BL_TRANSITION?ALULA_BL_LAMINAR:regime)?
+        ALULA_BL_OK:ALULA_BL_DOMAIN;
+}
+
+static AlulaBLStatus interval(const AlulaBLContext *c,const AlulaBLStation *upstream,const Station *prepared,
     const AlulaBLStation *downstream,AlulaBLRegime regime,double trip,double exponent,AlulaBLBlock *out)
 {
     if (!c || !out || regime<ALULA_BL_SIMILARITY || regime>ALULA_BL_TRANSITION ||
@@ -374,21 +389,35 @@ AlulaBLStatus alula_bl_interval(const AlulaBLContext *c,const AlulaBLStation *up
     AlulaBLStatus status=kinematics(c,downstream,&b);
     if (status!=ALULA_BL_OK) return status;
     if (regime!=ALULA_BL_SIMILARITY) {
-        status=kinematics(c,upstream,&a);
-        if (status!=ALULA_BL_OK) return status;
-        if (!(downstream->s>upstream->s)) return ALULA_BL_INVALID;
+        if (!prepared) {
+            status=kinematics(c,upstream,&a);
+            if (status!=ALULA_BL_OK) return status;
+        }
+        if (!(downstream->s>(prepared?prepared->input.s:upstream->s))) return ALULA_BL_INVALID;
     }
     *out=(AlulaBLBlock){0};
-    if (regime==ALULA_BL_TRANSITION) {
-        if (!closure(&a,ALULA_BL_LAMINAR)) return ALULA_BL_DOMAIN;
-        return mixed(c,&a,&b,trip,out);
+    if (regime!=ALULA_BL_TRANSITION && !closure(&b,regime)) return ALULA_BL_DOMAIN;
+    if (regime==ALULA_BL_SIMILARITY) prepared=&b;
+    else if (!prepared) {
+        if (!closure(&a,regime==ALULA_BL_TRANSITION?ALULA_BL_LAMINAR:regime)) return ALULA_BL_DOMAIN;
+        prepared=&a;
     }
-    if (!closure(&b,regime)) return ALULA_BL_DOMAIN;
-    if (regime==ALULA_BL_SIMILARITY) a=b;
-    else if (!closure(&a,regime)) return ALULA_BL_DOMAIN;
-    if (!differences(c,&a,&b,regime,exponent,out->residual)) return ALULA_BL_DOMAIN;
+    if (regime==ALULA_BL_TRANSITION) return mixed(c,prepared,&b,trip,out);
+    if (!differences(c,prepared,&b,regime,exponent,out->residual)) return ALULA_BL_DOMAIN;
     out->downstream=b.props;
     return ALULA_BL_OK;
+}
+
+AlulaBLStatus alula_bl_interval(const AlulaBLContext *c,const AlulaBLStation *upstream,
+    const AlulaBLStation *downstream,AlulaBLRegime regime,double trip,double exponent,AlulaBLBlock *out)
+{
+    return interval(c,upstream,NULL,downstream,regime,trip,exponent,out);
+}
+
+AlulaBLStatus alula_bl_prepared_interval(const AlulaBLContext *c,const Station *prepared,
+    const AlulaBLStation *downstream,AlulaBLRegime regime,double trip,double exponent,AlulaBLBlock *out)
+{
+    return interval(c,NULL,prepared,downstream,regime,trip,exponent,out);
 }
 
 AlulaBLStatus alula_bl_trailing_edge(const AlulaBLContext *c,const AlulaBLStation *upper,

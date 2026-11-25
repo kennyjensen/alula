@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#include "airfoil_coupled.h"
+#include "airfoil_bl_internal.h"
 #include "airfoil_grid_internal.h"
-#include "body_internal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -120,6 +119,7 @@ AlulaCoupledResult alula_airfoil_coupled_solve(AlulaAirfoilGrid *g,const AlulaCo
         .euler={.status=ALULA_BODY_BAD_STATE,.norm=INFINITY,.max_mach=NAN}};
     if (!g || !g->converged || !c || !positive(c->reynolds) || !(c->ncrit>=0) || !isfinite(c->ncrit) ||
         !positive(c->euler_tolerance) || !positive(c->displacement_tolerance) ||
+        !(c->displacement_scale>=0) || !isfinite(c->displacement_scale) ||
         !(c->relaxation>0 && c->relaxation<=1) || c->max_iterations<0 || c->euler_iterations<1) return r;
     const AlulaBody *b=g->body;
     size_t n=alula_body_coordinates_displacement_count(g->coordinates),rows=(size_t)b->size.rows;
@@ -149,25 +149,39 @@ AlulaCoupledResult alula_airfoil_coupled_solve(AlulaAirfoilGrid *g,const AlulaCo
     }
     if (!displacement(b,r.profiles,target,&r.bl_residual,&r.edge_residual)) goto done;
     r.displacement_residual=mismatch(target,applied,old_defect,n,chord);
+    if (c->progress) c->progress(g,r.profiles,0,fmax(fmax(r.euler.norm,r.bl_residual),
+        fmax(r.edge_residual,r.displacement_residual)),c->progress_context);
     double edge_tolerance=c->displacement_tolerance;
     double step=interaction?1:c->relaxation;
     int history=0;
     r.status=ALULA_COUPLED_ITERATION_LIMIT;
     for (int it=0;it<c->max_iterations && (r.displacement_residual>c->displacement_tolerance ||
         r.edge_residual>edge_tolerance);++it) {
+        double euler_tolerance=c->euler_tolerance;
+        /* Resolve the smaller flow changes that determine the final edge match. */
+        if (c->displacement_scale>0 && r.edge_residual<1e-4)
+            euler_tolerance=fmin(euler_tolerance,1e-12);
         alula_body_coordinates_save(g->coordinates,checkpoint);
         memcpy(packed,g->packed,rows*sizeof *packed);
         int accepted=0;
         /* Let the inverse seed settle before extrapolating the coupled iterates. */
-        int accelerated=it>=ANDERSON_STARTUP_UPDATES && history &&
+        int accelerated=(c->displacement_scale==0 || r.edge_residual<.005) &&
+            it>=ANDERSON_STARTUP_UPDATES && history &&
             anderson_direction(old_defect,dx,df,basis,direction,n,history);
         double trial_step=accelerated?1:step;
         for (int attempt=0;attempt<12;++attempt) {
             const double *update=accelerated?direction:old_defect;
-            for (size_t i=0;i<n;++i) trial[i]=applied[i]+trial_step*chord*update[i];
+            for (size_t i=0;i<n;++i) {
+                double weight=c->displacement_scale>0 && !accelerated?
+                    fmax(.2,fmin(8,c->displacement_scale/fmax(1e-15,applied[i]/chord))):1;
+                trial[i]=applied[i]+trial_step*chord*update[i]*weight;
+            }
             AlulaBodySolveResult e={.status=ALULA_BODY_BAD_STATE};
             if (alula_body_coordinates_set_displacement(g->coordinates,trial))
-                e=alula_airfoil_grid_solve(g,c->euler_iterations,c->euler_tolerance);
+                e=alula_airfoil_grid_solve(g,c->euler_iterations,euler_tolerance);
+            if (e.status==ALULA_BODY_INVALID_FINAL_GRID &&
+                alula_airfoil_grid_repair(g,c->euler_iterations,c->euler_tolerance,0,&e))
+                ++r.euler_grid_repairs;
             r.euler_updates+=e.iterations;
             int local=r.used_local_interaction;
             AlulaAirfoilBL *p=e.status==ALULA_BODY_SOLVED?march_interaction(g,c,interaction?trial:NULL,&local):NULL;
@@ -176,7 +190,12 @@ AlulaCoupledResult alula_airfoil_coupled_solve(AlulaAirfoilGrid *g,const AlulaCo
                 double norm=mismatch(target,trial,new_defect,n,chord);
                 if (merit(norm,edge_residual)<merit(r.displacement_residual,r.edge_residual)*
                     (1-1e-4*fmin(1,trial_step)) || (norm<=c->displacement_tolerance && edge_residual<=edge_tolerance)) {
-                    if (!accelerated) step=aitken(old_defect,new_defect,n,trial_step);
+                    if (!accelerated) {
+                        step=aitken(old_defect,new_defect,n,trial_step);
+                        /* Aitken uses the unweighted defect. For a thickness-scaled
+                         * direction, grow by at most one backtracking level. */
+                        if (c->displacement_scale>0) step=fmin(step,2*trial_step);
+                    }
                     if (local!=r.used_local_interaction) history=0;
                     else if (interaction) {
                         if (history==ANDERSON_DEPTH) {
@@ -200,6 +219,8 @@ AlulaCoupledResult alula_airfoil_coupled_solve(AlulaAirfoilGrid *g,const AlulaCo
                     r.edge_residual=edge_residual;
                     r.used_local_interaction=local;
                     ++r.iterations;
+                    if (c->progress) c->progress(g,p,r.iterations,fmax(fmax(e.norm,bl_residual),
+                        fmax(edge_residual,norm)),c->progress_context);
                     accepted=1;
                     break;
                 }
@@ -224,8 +245,76 @@ AlulaCoupledResult alula_airfoil_coupled_solve(AlulaAirfoilGrid *g,const AlulaCo
     if (r.displacement_residual<=c->displacement_tolerance && r.euler.norm<=c->euler_tolerance &&
         r.bl_residual<=c->euler_tolerance && r.edge_residual<=edge_tolerance)
         r.status=ALULA_COUPLED_OK;
+    else if (r.status==ALULA_COUPLED_LINE_SEARCH && interaction && r.iterations<c->max_iterations)
+        alula_airfoil_coupled_newton(g,c,&r,0);
 done:
     free(checkpoint);
     free(work);
     return r;
+}
+
+AlulaCoupledResult alula_airfoil_coupled_solve_to_mach(AlulaAirfoilGrid *g,
+    const AlulaCoupledControls *c,double target)
+{
+    if (!g || !(target>=g->mach && target<1))
+        return (AlulaCoupledResult){.status=ALULA_COUPLED_INVALID,.displacement_residual=INFINITY,
+            .bl_residual=INFINITY,.edge_residual=INFINITY,
+            .euler={.status=ALULA_BODY_BAD_STATE,.norm=INFINITY,.max_mach=NAN}};
+    AlulaCoupledResult result=alula_airfoil_coupled_solve(g,c);
+    if (g->mach==target || result.status!=ALULA_COUPLED_OK) return result;
+    size_t rows=g->body->size.rows,nd=alula_body_coordinates_displacement_count(g->coordinates);
+    size_t nc=alula_body_coordinates_checkpoint_count(g->coordinates);
+    double *packed=malloc((rows+nd)*sizeof(double));
+    AlulaPoint *chart=malloc(nc*sizeof *chart);
+    if (!packed || !chart) {
+        result.status=ALULA_COUPLED_ALLOCATION;
+        goto done;
+    }
+    double *thickness=packed+rows,step=.01;
+    int joint=0,stages=0,retries=0;
+    while (stages+retries<128 && g->mach<target) {
+        double last=g->mach,next=fmin(target,last+step);
+        alula_body_coordinates_save(g->coordinates,chart);
+        alula_body_coordinates_get_displacement(g->coordinates,thickness);
+        memcpy(packed,g->packed,rows*sizeof(double));
+        if (!alula_body_set_mach(g->body,next)) break;
+        g->mach=next;
+        g->converged=0;
+        AlulaCoupledResult trial={.status=ALULA_COUPLED_LINE_SEARCH};
+        AlulaBodySolveResult flow=alula_airfoil_grid_solve(g,joint?0:c->euler_iterations,c->euler_tolerance);
+        if (joint && (flow.status==ALULA_BODY_SOLVED || flow.status==ALULA_BODY_ITERATION_LIMIT)) {
+            /* The previous profiles seed the new Mach. Newton replaces them
+             * only after both the flow and the BL pass convergence. */
+            trial.profiles=result.profiles;
+            trial.euler=flow;
+            alula_airfoil_coupled_newton(g,c,&trial,1);
+        } else if (!joint && flow.status==ALULA_BODY_SOLVED) trial=alula_airfoil_coupled_solve(g,c);
+        if (trial.status==ALULA_COUPLED_OK) {
+            if (!joint) alula_airfoil_bl_free(result.profiles);
+            result=trial;
+            ++stages;
+            step=fmin(.01,step*1.5);
+            continue;
+        }
+        if (!joint) alula_airfoil_bl_free(trial.profiles);
+        alula_body_coordinates_restore(g->coordinates,chart);
+        alula_body_coordinates_set_displacement(g->coordinates,thickness);
+        memcpy(g->packed,packed,rows*sizeof(double));
+        alula_body_set_mach(g->body,last);
+        g->mach=last;
+        g->last_solve=result.euler;
+        g->converged=1;
+        ++retries;
+        if (joint) step=.5*(next-last);
+        joint=1;
+        if (step<1e-4) break;
+    }
+    result.mach_stages=stages;
+    result.mach_retries=retries;
+    if (g->mach!=target)
+        result.status=stages+retries==128?ALULA_COUPLED_ITERATION_LIMIT:ALULA_COUPLED_LINE_SEARCH;
+done:
+    free(packed);
+    free(chart);
+    return result;
 }

@@ -2,8 +2,10 @@
 #include "body_internal.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct { double value, tangent; } Dual;
+typedef struct { Farfield *next; int fill; } FarfieldPass;
 static Dual dadd(Dual a,Dual b) { return (Dual){a.value+b.value,a.tangent+b.tangent}; }
 static Dual dsub(Dual a,Dual b) { return (Dual){a.value-b.value,a.tangent-b.tangent}; }
 static Dual dscale(Dual a,double s) { return (Dual){a.value*s,a.tangent*s}; }
@@ -28,19 +30,31 @@ static AlulaPoint point_direction(const AlulaBody *b,const AlulaBodyState *d,int
     return d->nodes ? point(b,d,g,i,j) : (AlulaPoint){0};
 }
 
-static int field_direction(const AlulaBody *b,const double *coeff,const double *dc,
-    AlulaPoint p,AlulaPoint dp,Farfield *f,Farfield *df)
+static double field_pressure_direction(const AlulaBody *b,const Farfield *f,AlulaPoint dv)
 {
-    if (!alula_body_farfield(b,coeff,p,f)) return 0;
-    if (dp.x==0 && dp.y==0 && dc[0]==0 && dc[1]==0 && dc[2]==0 && dc[3]==0 && dc[4]==0) {
+    double temp=1+.5*(b->in.gamma-1)*b->mach_sq*(1-dot(f->velocity,f->velocity));
+    return -b->in.gamma*f->pressure*b->mach_sq/temp*dot(f->velocity,dv);
+}
+
+static int field_direction(const AlulaBody *b,const double *coeff,const double *dc,
+    AlulaPoint p,AlulaPoint dp,FarfieldPass *pass,const Farfield **primal,Farfield *df)
+{
+    Farfield *f=pass->next++;
+    if (pass->fill && !alula_body_farfield(b,coeff,p,f)) return 0;
+    if (primal) *primal=f;
+    if (dp.x==0 && dp.y==0) {
         *df=(Farfield){0};
-        return 1;
+        if (dc[0]==0 && dc[1]==0 && dc[2]==0 && dc[3]==0 && dc[4]==0) return 1;
+        /* Strength-only colors have no geometric derivative. */
+        for (int k=0;k<5;++k) df->velocity=add(df->velocity,scale(f->basis[k],dc[k]));
+        df->pressure=field_pressure_direction(b,f,df->velocity);
+        return finite_point(df->velocity) && isfinite(df->pressure);
     }
     AlulaPoint d=sub(p,b->in.center), fs=b->freestream;
     Dual x={dot(d,fs)/b->beta,dot(dp,fs)/b->beta}, y={cross(fs,d),cross(fs,dp)};
     Dual xx=dmul(x,x), yy=dmul(y,y), xy=dmul(x,y), r2=dadd(xx,yy);
     Dual r4=dmul(r2,r2), r6=dmul(r4,r2);
-    Dual log_radius={.5*log(r2.value),.5*r2.tangent/r2.value};
+    Dual log_radius={f->log_radius,.5*r2.tangent/r2.value};
     Dual delta=dsub(xx,yy), cubic=dmul(x,dsub(xx,dscale(yy,3)));
     Dual gx[]={
         dscale(ddiv(y,r2),-1/TWO_PI),
@@ -64,8 +78,7 @@ static int field_direction(const AlulaBody *b,const double *coeff,const double *
         df->basis[k]=(AlulaPoint){dx*fs.x-dy*fs.y,dx*fs.y+dy*fs.x};
         df->velocity=add(df->velocity,add(scale(df->basis[k],coeff[k]),scale(f->basis[k],dc[k])));
     }
-    double temp=1+.5*(b->in.gamma-1)*b->mach_sq*(1-dot(f->velocity,f->velocity));
-    df->pressure=-b->in.gamma*f->pressure*b->mach_sq/temp*dot(f->velocity,df->velocity);
+    df->pressure=field_pressure_direction(b,f,df->velocity);
     return finite_point(df->velocity) && isfinite(df->pressure);
 }
 
@@ -93,44 +106,58 @@ static SectionTangent section_direction(const AlulaBody *b,const AlulaBodyState 
     return (SectionTangent){.speed=speed,.mach_sq=m,.enthalpy=h,.length=length_derivative,.density=rho,.transport=speed};
 }
 
-static int prepare_tangents(AlulaBody *b,const AlulaBodyState *d)
+static int prepare_tangents(AlulaBody *b,const AlulaBodyState *d,int first,int end)
 {
     int nx=b->in.nx,nt=b->size.tubes,bodies=b->in.bodies,bad=0;
     if (!b->section_tangents) b->section_tangents=malloc((size_t)nx*nt*sizeof *b->section_tangents);
     if (!b->cell_tangents) b->cell_tangents=malloc((size_t)(nx-1)*nt*sizeof *b->cell_tangents);
     if (!b->cell_tangents || !b->section_tangents) return 0;
+    /* A cell at i uses sections i-1 and i. Upwind transport can also
+     * carry a section perturbation two sections downstream. */
+    int first_cell=first>0 ? first : 1;
+    int end_cell=end+1+(b->in.upwind ? 2 : 0);
+    if (end_cell>nx) end_cell=nx;
+    if (first>0 || end<nx) {
+        memset(b->section_tangents,0,(size_t)first*nt*sizeof *b->section_tangents);
+        memset(b->section_tangents+end*nt,0,(size_t)(nx-end)*nt*sizeof *b->section_tangents);
+        memset(b->cell_tangents,0,(size_t)(first_cell-1)*nt*sizeof *b->cell_tangents);
+        memset(b->cell_tangents+(end_cell-1)*nt,0,(size_t)(nx-end_cell)*nt*sizeof *b->cell_tangents);
+    }
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) reduction(|:bad) if(nx*nt>1024)
+#pragma omp parallel for schedule(static) reduction(|:bad) if((end-first)*nt>1024)
 #endif
-    for (int k=0;k<nx;++k) for (int g=0;g<=bodies;++g) for (int j=0;j<b->tubes[g];++j) {
+    for (int k=first;k<end;++k) for (int g=0;g<=bodies;++g) for (int j=0;j<b->tubes[g];++j) {
         SectionTangent t=section_direction(b,d,g,k,j);
         if (!isfinite(t.speed) || !isfinite(t.mach_sq) || !isfinite(t.enthalpy) || !isfinite(t.length)) bad=1;
         b->section_tangents[index_section(b,g,k,j)]=t;
     }
     if (bad) return 0;
     if (b->in.upwind) {
+        /* Filtered transport reads the current and two upstream sections.
+         * An exceptional primal stencil must still be checked even where the
+         * direction is zero, as in a full Jacobian product. */
+        int start=first>2 ? first : 2;
+        int stop=end+2<nx ? end+2 : nx;
+        if (b->check_all_upwind_tangents) { start=2; stop=nx; }
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) reduction(|:bad) if(nx*nt>1024)
+#pragma omp parallel for schedule(static) reduction(|:bad) if((stop-start)*nt>1024)
 #endif
-        for (int k=2*nt;k<nx*nt;++k) {
-            const Section *s=b->sections+k,*a=s-2*nt,*z=s-nt;
+        for (int k=start*nt;k<stop*nt;++k) {
             SectionTangent *ds=b->section_tangents+k;
             const SectionTangent *da=ds-2*nt,*dz=ds-nt;
-            AlulaUpwindInput in={.speed={a->gas.speed,z->gas.speed,s->gas.speed},
-                .mach_sq={z->gas.mach_sq,s->gas.mach_sq},.spacing={.5*(a->length+z->length),.5*(z->length+s->length)},
-                .mucon=b->in.mucon,.mcrit=b->in.mcrit,.gamma=b->in.gamma};
             AlulaUpwindInput dir={.speed={da->speed,dz->speed,ds->speed},
                 .mach_sq={dz->mach_sq,ds->mach_sq},.spacing={.5*(da->length+dz->length),.5*(dz->length+ds->length)}};
-            AlulaUpwindValue v,dv;
-            if (alula_streamtube_upwind(&in,&v,&dir,&dv)==ALULA_CELL_OK) ds->transport=dv.speed;
-            else bad=1;
+            const AlulaUpwindStencil *stencil=b->upwind_stencils+(k-2*nt);
+            double transport=alula_upwind_speed_direction(stencil,&dir);
+            if (stencil->kink || !isfinite(transport)) bad=1;
+            else ds->transport=transport;
         }
     }
     if (bad) return 0;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) reduction(|:bad) if(nx*nt>1024)
+#pragma omp parallel for schedule(static) reduction(|:bad) if((end_cell-first_cell)*nt>1024)
 #endif
-    for (int i=1;i<nx;++i) for (int g=0;g<=bodies;++g) for (int j=0;j<b->tubes[g];++j) {
+    for (int i=first_cell;i<end_cell;++i) for (int g=0;g<=bodies;++g) for (int j=0;j<b->tubes[g];++j) {
         int k=index_section(b,g,i-1,j);
         AlulaCellDirection dir={.density={b->section_tangents[k].density,b->section_tangents[k+nt].density},
             .mass=d->mass ? d->mass[b->column[g]+j] : 0};
@@ -158,21 +185,22 @@ static int prepare_tangents(AlulaBody *b,const AlulaBodyState *d)
 }
 
 static int end_direction(const AlulaBody *b,const double *coeff,const double *dc,
-    AlulaPoint a,AlulaPoint z,AlulaPoint da,AlulaPoint dz,double *value)
+    AlulaPoint a,AlulaPoint z,AlulaPoint da,AlulaPoint dz,FarfieldPass *pass,double *value)
 {
-    Farfield fa,fz,dfa,dfz;
+    const Farfield *fa,*fz;
+    Farfield dfa,dfz;
     AlulaPoint edge=sub(z,a), de=sub(dz,da);
     double length=norm(edge);
-    if (!positive(length) || !field_direction(b,coeff,dc,a,da,&fa,&dfa) ||
-        !field_direction(b,coeff,dc,z,dz,&fz,&dfz)) return 0;
-    AlulaPoint velocity=mean(fa.velocity,fz.velocity), dv=mean(dfa.velocity,dfz.velocity);
+    if (!positive(length) || !field_direction(b,coeff,dc,a,da,pass,&fa,&dfa) ||
+        !field_direction(b,coeff,dc,z,dz,pass,&fz,&dfz)) return 0;
+    AlulaPoint velocity=mean(fa->velocity,fz->velocity), dv=mean(dfa.velocity,dfz.velocity);
     double dn=dot(edge,de)/length;
     *value=(dcross(edge,velocity,de,dv)-cross(edge,velocity)*dn/length)/length;
     return isfinite(*value);
 }
 
 static int boundary_direction(const AlulaBody *b,const AlulaBodyState *s,const AlulaBodyState *d,
-    const double *coeff,const double *dc,Row row,double *value)
+    const double *coeff,const double *dc,Row row,FarfieldPass *pass,double *value)
 {
     int g=row.g,j=row.j,outlet=row.i==b->in.nx,cut=g<b->in.bodies && j==b->tubes[g];
     int i=outlet?b->in.nx-1:0;
@@ -183,14 +211,14 @@ static int boundary_direction(const AlulaBody *b,const AlulaBodyState *s,const A
         AlulaPoint du=point_direction(b,d,g+1,i,0),dw=point_direction(b,d,g+1,i+1,0);
         if (b->in.bank_outlet) {
             double lower,upper;
-            if (!end_direction(b,coeff,dc,a,z,da,dz,&lower) ||
-                !end_direction(b,coeff,dc,u,w,du,dw,&upper)) return 0;
+            if (!end_direction(b,coeff,dc,a,z,da,dz,pass,&lower) ||
+                !end_direction(b,coeff,dc,u,w,du,dw,pass,&upper)) return 0;
             *value=.5*(lower+upper);
             return 1;
         }
         a=mean(a,u); z=mean(z,w); da=mean(da,du); dz=mean(dz,dw);
     }
-    return end_direction(b,coeff,dc,a,z,da,dz,value);
+    return end_direction(b,coeff,dc,a,z,da,dz,pass,value);
 }
 
 static double gap_direction(const AlulaBody *b,const AlulaBodyState *s,const AlulaBodyState *d,Row r)
@@ -209,7 +237,7 @@ static double gap_direction(const AlulaBody *b,const AlulaBodyState *s,const Alu
 }
 
 static int match_direction(const AlulaBody *b,const AlulaBodyState *s,const AlulaBodyState *d,
-    const double *coeff,const double *dc,double out[3],double *edges)
+    const double *coeff,const double *dc,FarfieldPass *pass,double out[3],double *edges)
 {
     double match[3]={0},sq[3]={0},dm[3]={0},ds[3]={0};
     int top=b->in.bodies;
@@ -219,15 +247,16 @@ static int match_direction(const AlulaBody *b,const AlulaBodyState *s,const Alul
             AlulaPoint a=point(b,s,g,i,j),z=point(b,s,g,i+1,j),edge=sub(z,a);
             AlulaPoint da=point_direction(b,d,g,i,j),dz=point_direction(b,d,g,i+1,j),de=sub(dz,da);
             double length=norm(edge), dn=dot(edge,de)/length;
-            Farfield f,df;
-            if (!field_direction(b,coeff,dc,mean(a,z),mean(da,dz),&f,&df)) return 0;
+            const Farfield *f;
+            Farfield df;
+            if (!field_direction(b,coeff,dc,mean(a,z),mean(da,dz),pass,&f,&df)) return 0;
             int k=index_section(b,g,i,tube);
             double q=b->sections[k].gas.speed,dq=b->section_tangents[k].speed;
             AlulaPoint t=scale(edge,1/length),u=scale(t,q);
             AlulaPoint du=add(scale(t,dq),scale(sub(de,scale(t,dn)),q/length));
-            double defect=cross(f.velocity,u), ddefect=dcross(f.velocity,u,df.velocity,du);
+            double defect=cross(f->velocity,u), ddefect=dcross(f->velocity,u,df.velocity,du);
             for (int l=0;l<3;++l) {
-                double mode=cross(f.basis[l+1],u), dmode=dcross(f.basis[l+1],u,df.basis[l+1],du);
+                double mode=cross(f->basis[l+1],u), dmode=dcross(f->basis[l+1],u,df.basis[l+1],du);
                 match[l]+=length*defect*mode;
                 sq[l]+=length*mode*mode;
                 double a=dn*defect*mode+length*(ddefect*mode+defect*dmode);
@@ -254,14 +283,27 @@ static int match_direction(const AlulaBody *b,const AlulaBodyState *s,const Alul
 }
 
 AlulaBodyStatus alula_body_apply_prepared(AlulaBody *b,const AlulaBodyState *s,const AlulaBodyState *d,
-    double *product,double *edges)
+    int first,int end,double *product,double *edges)
 {
-    if (!prepare_tangents(b,d)) return ALULA_BODY_NONFINITE;
+    if (!prepare_tangents(b,d,first,end)) return ALULA_BODY_NONFINITE;
+    if (!b->jacobian_fields) {
+        /* Two exterior midpoint sequences, one field per pressure row,
+         * and at most four endpoints per tangency row. */
+        size_t count=2*(size_t)b->in.nx;
+        for (int k=0;k<b->size.rows;++k) {
+            if (b->rows[k].family==ALULA_BODY_FARFIELD_PRESSURE) ++count;
+            if (b->rows[k].family==ALULA_BODY_END_TANGENCY) count+=4;
+        }
+        b->jacobian_fields=malloc(count*sizeof *b->jacobian_fields);
+        if (!b->jacobian_fields) return ALULA_BODY_NONFINITE;
+    }
+    /* Every color visits these points in the same topology-defined order. */
+    FarfieldPass pass={b->jacobian_fields,b->jacobian_field_generation!=b->residual_generation};
 
     double coeff[]={-s->circulation,s->source,s->doublet_x,s->doublet_y,s->circulation*s->circulation};
     double dc[]={-d->circulation,d->source,d->doublet_x,d->doublet_y,2*s->circulation*d->circulation};
     double match[3];
-    if (!match_direction(b,s,d,coeff,dc,match,edges)) return ALULA_BODY_NONFINITE;
+    if (!match_direction(b,s,d,coeff,dc,&pass,match,edges)) return ALULA_BODY_NONFINITE;
     for (int k=0;k<b->size.rows;++k) {
         Row row=b->rows[k];
         int i=row.i,g=row.g,j=row.j;
@@ -283,8 +325,8 @@ AlulaBodyStatus alula_body_apply_prepared(AlulaBody *b,const AlulaBodyState *s,c
             break;
         }
         case ALULA_BODY_FARFIELD_PRESSURE: {
-            Farfield f,df;
-            if (!field_direction(b,coeff,dc,point(b,s,g,i,j),point_direction(b,d,g,i,j),&f,&df))
+            Farfield df;
+            if (!field_direction(b,coeff,dc,point(b,s,g,i,j),point_direction(b,d,g,i,j),&pass,NULL,&df))
                 return ALULA_BODY_NONFINITE;
             int side=g==b->in.bodies, l=index_section(b,g,i-1,side?j-1:0);
             v=(b->cell_tangents[l].pressure[side]-df.pressure)/b->p_inf;
@@ -298,7 +340,7 @@ AlulaBodyStatus alula_body_apply_prepared(AlulaBody *b,const AlulaBodyState *s,c
             break;
         }
         case ALULA_BODY_END_TANGENCY:
-            if (!boundary_direction(b,s,d,coeff,dc,row,&v)) return ALULA_BODY_NONFINITE;
+            if (!boundary_direction(b,s,d,coeff,dc,row,&pass,&v)) return ALULA_BODY_NONFINITE;
             break;
         case ALULA_BODY_WAKE_GAP:
             v=gap_direction(b,s,d,row);
@@ -312,6 +354,7 @@ AlulaBodyStatus alula_body_apply_prepared(AlulaBody *b,const AlulaBodyState *s,c
         if (!isfinite(v)) return ALULA_BODY_NONFINITE;
         product[k]=v;
     }
+    b->jacobian_field_generation=b->residual_generation;
     return ALULA_BODY_OK;
 }
 
@@ -322,5 +365,5 @@ AlulaBodyStatus alula_body_linearize(AlulaBody *b,const AlulaBodyState *s,const 
     if (!d || !product || product==residual || !isfinite(d->circulation) || !isfinite(d->source) ||
         !isfinite(d->doublet_x) || !isfinite(d->doublet_y)) return ALULA_BODY_INVALID;
     AlulaBodyStatus status=alula_body_residual(b,s,residual,diag);
-    return status==ALULA_BODY_OK ? alula_body_apply_prepared(b,s,d,product,NULL) : status;
+    return status==ALULA_BODY_OK ? alula_body_apply_prepared(b,s,d,0,b->in.nx,product,NULL) : status;
 }

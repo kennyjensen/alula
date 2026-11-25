@@ -12,6 +12,8 @@ typedef struct {
 
 /* Natural cubic through an ordered upper-TE to lower-TE surface. */
 int alula_contour_spline_create(AlulaContourSpline *curve, const AlulaPoint *points, int count);
+/* Zero third derivative on the end intervals, as in XFOIL SEGSPL. */
+int alula_contour_spline_parabolic(AlulaContourSpline *curve,const AlulaPoint *points,int count);
 void alula_contour_spline_free(AlulaContourSpline *curve);
 void alula_contour_spline_value(const AlulaContourSpline *curve, double parameter,
     AlulaPoint *point, AlulaPoint *tangent, AlulaPoint *curvature);

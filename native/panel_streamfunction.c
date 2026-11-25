@@ -1,21 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "panel_internal.h"
+#include "dense.h"
 
 #include <float.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef struct {
-    size_t start, end, offset, wetted;
-    AlulaPoint origin, direction, probe;
-    int finite;
-} Range;
-
-typedef struct {
-    AlulaPoint point, tangent;
-    size_t body;
-    int interior;
-} Row;
 
 static AlulaPoint scale(AlulaPoint p, double x) { return (AlulaPoint){x*p.x, x*p.y}; }
 static AlulaPoint add(AlulaPoint a, AlulaPoint b) { return (AlulaPoint){a.x+b.x, a.y+b.y}; }
@@ -101,7 +90,7 @@ static int order_double(const void *a, const void *b)
 }
 
 static int chart(const AlulaContour *contours, size_t count, size_t body,
-    const Segment *base, size_t nb, AlulaPoint center, double gap, Range *r)
+    const Segment *base, size_t nb, AlulaPoint center, double gap, PanelRange *r)
 {
     const AlulaContour *c = contours+body;
     AlulaPoint preferred = r->direction;
@@ -268,8 +257,8 @@ double alula_panel_base_psi(AlulaPoint point, const Segment *s, double source, d
     return p->length*(source*(imaginary+angle-midpoint_angle)-vortex*real)/(2*ALULA_PI);
 }
 
-static int setup_geometry(const AlulaContour *contours, size_t count, size_t total,
-    Segment *segments, Range *ranges, Row *rows, size_t *wetted)
+int alula_panel_boundary_setup(const AlulaContour *contours, size_t count, size_t total,
+    Segment *segments, PanelRange *ranges, PanelRow *rows, size_t wetted)
 {
     size_t wet = 0, base = total, offset = 0;
     for (size_t e = 0; e < count; ++e) {
@@ -278,8 +267,8 @@ static int setup_geometry(const AlulaContour *contours, size_t count, size_t tot
         size_t nw = c->finite_base ? (c->lower_index+n-upper)%n : n;
         size_t nb = n-nw;
         if (!same(c->points[0], c->points[n])) return 0;
-        Range *r = ranges+e;
-        *r = (Range){.start=wet+e, .end=wet+e+nw, .offset=wet, .wetted=nw, .finite=c->finite_base};
+        PanelRange *r = ranges+e;
+        *r = (PanelRange){.start=wet+e, .end=wet+e+nw, .offset=wet, .wetted=nw, .finite=c->finite_base};
         base -= nb;
         double area = 0;
         for (size_t k = 0; k < n; ++k) {
@@ -294,17 +283,22 @@ static int setup_geometry(const AlulaContour *contours, size_t count, size_t tot
                 .geometry={a, scale(add(a, b), .5), t, {t.y, -t.x}, length, r->start+k},
                 .end=b, .output=offset+idx, .body=e, .log_length=log(length)
             };
-            if (k < nw) rows[r->start+k] = (Row){.point=a, .body=e};
+            if (k < nw) rows[r->start+k] = (PanelRow){.point=a, .body=e};
         }
         if (!(area > 0) || !isfinite(area)) return 0;
         AlulaPoint left, right;
-        endpoint_derivatives(segments+wet, nw, r->finite, &left, &right);
+        if (wetted<total) endpoint_derivatives(segments+wet,nw,r->finite,&left,&right);
+        else {
+            left=segments[wet].geometry.tangent;
+            right=segments[wet+nw-1].geometry.tangent;
+        }
+        r->wake_direction=subtract(segments[wet+nw-1].geometry.tangent,segments[wet].geometry.tangent);
         AlulaPoint top = segments[wet].geometry.a, bottom = segments[wet+nw-1].end;
         if (r->finite) {
             AlulaPoint t = scale(subtract(right, left), .5);
             double length = norm(t);
             if (!(length > 0) || !isfinite(length)) return 0;
-            r->direction = scale(t, 1/length);
+            r->wake_direction = r->direction = scale(t, 1/length);
             AlulaPoint gap = subtract(top, bottom);
             AlulaPoint bisector = subtract(segments[wet+nw-1].geometry.tangent, segments[wet].geometry.tangent);
             if (!(cross(bisector, gap) > 0)) return 0;
@@ -319,26 +313,25 @@ static int setup_geometry(const AlulaContour *contours, size_t count, size_t tot
                 s->geometry.node = r->start;
                 s->last_node = r->end;
             }
-            rows[r->end] = (Row){.point=bottom, .body=e};
+            rows[r->end] = (PanelRow){.point=bottom, .body=e};
         } else {
             AlulaPoint t = subtract(scale(right, 1/norm(right)), scale(left, 1/norm(left)));
             double length = norm(t);
             if (!(length > 0) || !isfinite(length)) return 0;
             t = scale(t, 1/length);
             double distance = .1*fmin(segments[wet].geometry.length, segments[wet+nw-1].geometry.length);
-            r->probe = subtract(top, scale(t, distance));
-            if (!inside(r->probe, c)) return 0;
-            rows[r->end] = (Row){r->probe, t, e, 1};
+            AlulaPoint probe = subtract(top, scale(t, distance));
+            if (!inside(probe, c)) return 0;
+            rows[r->end] = (PanelRow){probe, t, e, 1};
         }
         wet += nw;
         offset += n;
     }
-    *wetted = wet;
-    return 1;
+    return wet==wetted;
 }
 
-static void assemble_row(double *a, double *bx, double *by, const Row *row, size_t strength,
-    const Segment *segments, size_t wet, size_t total, const Range *ranges, double chord)
+static void assemble_row(double *a, double *bx, double *by, const PanelRow *row, size_t strength,
+    const Segment *segments, size_t wet, size_t total, const PanelRange *ranges, double chord)
 {
     double inv_chord = 1/chord;
     if (row->interior) {
@@ -366,7 +359,7 @@ static void assemble_row(double *a, double *bx, double *by, const Row *row, size
     }
     for (size_t j = wet; j < total; ++j) {
         const Segment *s = segments+j;
-        const Range *r = ranges+s->body;
+        const PanelRange *r = ranges+s->body;
         double q;
         if (row->interior) {
             AlulaPoint velocity[2];
@@ -381,39 +374,45 @@ static void assemble_row(double *a, double *bx, double *by, const Row *row, size
     }
 }
 
+void alula_panel_boundary_assemble(double *a,double *bx,double *by,size_t count,
+    const Segment *segments,size_t wet,size_t total,const PanelRow *rows,const PanelRange *ranges,double chord)
+{
+    size_t strength=wet+count, size=strength+count;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) if(wet > 128)
+#endif
+    for (size_t i = 0; i < strength; ++i)
+        assemble_row(a+i*size, bx+i, by+i, rows+i, strength, segments, wet, total, ranges, chord);
+    for (size_t e = 0; e < count; ++e) {
+        a[(strength+e)*size+ranges[e].start] = 1;
+        a[(strength+e)*size+ranges[e].end] = 1;
+    }
+}
+
 AlulaPanelSystem *alula_panel_prepare_streamfunction(const AlulaContour *contours,
-    size_t count, size_t total, double chord, AlulaPoint moment)
+    size_t count, size_t total, size_t wet, double chord, AlulaPoint moment)
 {
     AlulaPanelSystem *system = alula_panel_allocate(total);
     Segment *segments = calloc(total, sizeof *segments);
-    Range ranges[6];
-    Row rows[ALULA_PANEL_MAX_WETTED+6];
+    PanelRange ranges[6];
+    PanelRow rows[ALULA_PANEL_MAX_WETTED+6];
     double *a = NULL, *factors = NULL, *b = NULL;
-    size_t wet;
     int success = 0;
-    if (!system || !segments || !setup_geometry(contours, count, total, segments, ranges, rows, &wet))
+    if (!system || !segments || !alula_panel_boundary_setup(contours,count,total,segments,ranges,rows,wet))
         goto done;
     size_t strength = wet+count, size = strength+count;
     a = calloc(size*size, sizeof *a);
     factors = malloc(size*size*sizeof *factors);
     b = calloc(2*size, sizeof *b);
     if (!a || !factors || !b) goto done;
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static) if(wet > 128)
-#endif
-    for (size_t i = 0; i < strength; ++i)
-        assemble_row(a+i*size, b+i, b+size+i, rows+i, strength, segments, wet, total, ranges, chord);
-    for (size_t e = 0; e < count; ++e) {
-        a[(strength+e)*size+ranges[e].start] = 1;
-        a[(strength+e)*size+ranges[e].end] = 1;
-    }
+    alula_panel_boundary_assemble(a,b,b+size,count,segments,wet,total,rows,ranges,chord);
     memcpy(factors, a, size*size*sizeof *a);
-    if (!alula_panel_factor(factors, b, size)) goto done;
+    if (!alula_dense_solve(factors, b, size, 2)) goto done;
     double rx = 0, ry = 0;
     for (size_t i = 0; i < size; ++i) {
         double nx = 0, ny = 0;
         if (i < strength) {
-            const Row *r = rows+i;
+            const PanelRow *r = rows+i;
             nx = r->interior ? r->tangent.x : r->point.y/chord;
             ny = r->interior ? r->tangent.y : -r->point.x/chord;
         }
@@ -429,7 +428,7 @@ AlulaPanelSystem *alula_panel_prepare_streamfunction(const AlulaContour *contour
     if (!(system->residual_bound < 1e-9)) goto done;
     for (size_t i = 0; i < total; ++i) {
         Segment *s = segments+i;
-        const Range *r = ranges+s->body;
+        const PanelRange *r = ranges+s->body;
         int base = i >= wet;
         size_t a0 = base ? r->start : s->geometry.node;
         size_t a1 = base ? r->end : a0+1;

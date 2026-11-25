@@ -197,7 +197,8 @@ static int prepare(AlulaChannel *c, const double *state)
             p.upper[k]=(AlulaPoint){in->x[station],c->y[n+1]};
         }
         AlulaCell *cell=c->cells+(i-1)*nt+j;
-        if (alula_cell_initialize(cell,&p)!=ALULA_CELL_OK) return 0;
+        const AlulaCell *previous=i>1?cell-nt:NULL;
+        if (alula_cell_initialize(cell,&p,previous)!=ALULA_CELL_OK) return 0;
         const AlulaCellGeometry *g=&cell->value.geometry;
         for (int k=i==1 ? 0 : 1; k<2; ++k) {
             AlulaSection a=cell->value.state[k];

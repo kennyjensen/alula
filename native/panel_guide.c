@@ -285,25 +285,32 @@ AlulaPanelGuides *alula_panel_guides_create(const AlulaPanelField *field,
         bound->lo=(AlulaPoint){fmin(bound->lo.x,b.lo.x),fmin(bound->lo.y,b.lo.y)};
         bound->hi=(AlulaPoint){fmax(bound->hi.x,b.hi.x),fmax(bound->hi.y,b.hi.y)};
     }
-    size_t first=0;
+    size_t starts[7]={0};
     for (size_t e=0; e<s->bodies; ++e) {
-        size_t end=first;
+        size_t first=starts[e],end=first;
         while (end<s->wetted && s->segments[end].body==e) ++end;
         if (end-first<3) { result=ALULA_GUIDE_INVALID; goto fail; }
-        result=prepare_body(g,c,e,first,end);
-        if (result!=ALULA_GUIDE_OK) goto fail;
-        first=end;
+        starts[e+1]=end;
     }
-    qsort(g->bodies,s->bodies,sizeof *g->bodies,order);
     double budget=4*(c->outlet_x-c->inlet_x);
-    for (int upper=0; upper<2; ++upper) {
-        AlulaPoint p={c->inlet_x,upper?c->inlet_upper_y:c->inlet_lower_y};
-        if (!alula_panel_field_sample(field,p,NULL,g->levels+(upper?s->bodies+1:0))) {
-            result=ALULA_GUIDE_SEED; goto fail;
+    AlulaPanelGuideStatus guide_status[8];
+    int bodies=(int)s->bodies;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic) if(s->count>=128)
+#endif
+    for (int job=0; job<bodies+2; ++job) {
+        if (job<bodies) {
+            guide_status[job]=prepare_body(g,c,(size_t)job,starts[job],starts[job+1]);
+        } else {
+            int upper=job-bodies;
+            AlulaPoint p={c->inlet_x,upper?c->inlet_upper_y:c->inlet_lower_y};
+            guide_status[job]=alula_panel_field_sample(field,p,NULL,g->levels+(upper?bodies+1:0))?
+                trace(g,p,c->outlet_x,budget,g->farfield+upper):ALULA_GUIDE_SEED;
         }
-        result=trace(g,p,c->outlet_x,budget,g->farfield+upper);
-        if (result!=ALULA_GUIDE_OK) goto fail;
     }
+    for (int job=0; job<bodies+2; ++job)
+        if (guide_status[job]!=ALULA_GUIDE_OK) { result=guide_status[job]; goto fail; }
+    qsort(g->bodies,s->bodies,sizeof *g->bodies,order);
     for (size_t e=0; e<s->bodies; ++e) g->levels[e+1]=g->bodies[e].inlet_level;
     for (size_t e=0; e<=s->bodies; ++e)
         if (!(g->levels[e+1]>g->levels[e])) { result=ALULA_GUIDE_ORDER; goto fail; }

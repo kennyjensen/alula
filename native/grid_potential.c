@@ -47,19 +47,10 @@ static double surface_phi(const AlulaPanelField *field,const AlulaPanelBodyGuide
     return h*total;
 }
 
-int alula_grid_guide_potential(const AlulaPanelField *field,const AlulaPanelGuides *guides,
+int alula_grid_guide_potential(const AlulaPanelField *field,
     const AlulaPanelBodyGuide *profiles,const AlulaAirfoilGrid *grid,const double *x,int nx,int count,double *phi)
 {
     int rows=nx+1;
-    for (int side=0;side<2;++side) {
-        AlulaGuidePath path=alula_panel_guides_farfield(guides,side);
-        double *p=phi+(side?count+1:0)*rows;
-        for (int i=0;i<=nx;++i) {
-            AlulaTracePoint hit;
-            if (alula_panel_guides_sample_x(guides,path,x[i],&hit)!=ALULA_GUIDE_OK) return 0;
-            p[i]=hit.potential;
-        }
-    }
     for (int g=0;g<count;++g) {
         const AlulaPanelBodyGuide *b=profiles+g;
         AlulaBodyCut cut=grid->cuts[g];
@@ -67,25 +58,25 @@ int alula_grid_guide_potential(const AlulaPanelField *field,const AlulaPanelGuid
         double inlet=b->incoming.points[b->incoming.count-1].potential;
         double to_stagnation=.5*b->strain*b->seed_distance*b->seed_distance;
         for (int i=0;i<cut.leading;++i) {
-            AlulaTracePoint hit;
+            double potential=p[i];
             if (x[i]>b->incoming.points[0].position.x) {
                 double span=b->stagnation_point.x-b->incoming.points[0].position.x;
                 double f=(b->stagnation_point.x-x[i])/span;
-                hit.potential=to_stagnation*(1-f*f);
-            } else if (alula_panel_guides_sample_x(guides,b->incoming,x[i],&hit)!=ALULA_GUIDE_OK) return 0;
-            p[i]=hit.potential-inlet;
+                potential=to_stagnation*(1-f*f);
+            }
+            if (!isfinite(potential)) return 0;
+            p[i]=potential-inlet;
         }
         p[cut.leading]=to_stagnation-inlet;
         AlulaPoint q;
         if (!alula_panel_field_sample(field,b->wake.points[0].position,&q,NULL)) return 0;
         double wake_phi=norm(q)*norm(subtract(b->wake.points[0].position,b->trailing_edge));
         for (int i=cut.trailing+1;i<=nx;++i) {
-            AlulaTracePoint hit;
             if (x[i]<b->wake.points[0].position.x) {
                 p[i]=wake_phi*(x[i]-b->trailing_edge.x)/(b->wake.points[0].position.x-b->trailing_edge.x);
             } else {
-                if (alula_panel_guides_sample_x(guides,b->wake,x[i],&hit)!=ALULA_GUIDE_OK) return 0;
-                p[i]=wake_phi+hit.potential;
+                if (!isfinite(p[i])) return 0;
+                p[i]=wake_phi+p[i];
             }
         }
     }
@@ -124,49 +115,72 @@ static int potential_boundaries(const AlulaPanelField *field,const AlulaPanelBod
     return 1;
 }
 
+typedef struct { int passage,tube; double fraction; } InteriorLine;
+
+static int place_line(AlulaGuidePath path,double eta,const double *lower,const double *upper,
+    AlulaPoint *nodes,int nx,int stride)
+{
+    double range=path.points[path.count-1].potential;
+    /* Match relative potential along each bank while preserving the
+     * traced streamline's inlet and outlet on the physical planes. */
+    double extent=(1-eta)*(lower[nx]-lower[0])+eta*(upper[nx]-upper[0]);
+    for (int i=0;i<=nx;++i) {
+        double here=i==0?0:i==nx?range:range*((1-eta)*(lower[i]-lower[0])+eta*(upper[i]-upper[0]))/extent;
+        if (!sample_potential(path,here,nodes+(size_t)i*stride)) return 0;
+    }
+    return 1;
+}
+
 int alula_fill_potential_grid(const AlulaPanelField *field,const AlulaPanelGuides *guides,
     const AlulaPanelBodyGuide *profiles,AlulaAirfoilGrid *grid,const AlulaPoint *boundaries,
     const double *guide_phi,const double *fractions,const double *weights,int nx,int count,double chord,
-    AlulaPanelStreamline **lines)
+    AlulaPanelStreamline **const *lines)
 {
     int rows=nx+1,ok=0;
     double *phi=malloc((size_t)(2*count+2)*rows*sizeof *phi);
-    if (!phi || !potential_boundaries(field,profiles,grid,guide_phi,nx,count,fractions,chord,phi))
+    int capacity=alula_airfoil_grid_size(grid).tubes-count-1;
+    InteriorLine *interior=capacity?malloc((size_t)capacity*sizeof *interior):NULL;
+    if (!phi || (capacity && !interior) ||
+        !potential_boundaries(field,profiles,grid,guide_phi,nx,count,fractions,chord,phi))
         goto done;
     const double *levels=alula_panel_guides_levels(guides);
-    size_t offset=0;
+    size_t offset[7]={0};
+    int used=0,uncached=0;
     for (int g=0;g<=count;++g) {
         int tubes=grid->tubes[g];
-        const double *lower=phi+2*g*rows,*upper=lower+rows;
         const AlulaPoint *a=boundaries+2*g*rows,*b=a+rows;
         double total=0,mass=0;
         for (int j=0;j<tubes;++j) total+=weights[j];
         for (int i=0;i<rows;++i) {
-            grid->nodes[offset+i*(tubes+1)]=a[i];
-            grid->nodes[offset+i*(tubes+1)+tubes]=b[i];
+            grid->nodes[offset[g]+i*(tubes+1)]=a[i];
+            grid->nodes[offset[g]+i*(tubes+1)+tubes]=b[i];
         }
         for (int j=1;j<tubes;++j) {
             mass+=weights[j-1];
-            double eta=mass/total;
-            if (!lines[j])
-                lines[j]=alula_panel_guides_trace_level(guides,levels[g]+eta*(levels[g+1]-levels[g]),NULL);
-            if (!lines[j]) goto done;
-            AlulaGuidePath path=alula_panel_streamline_path(lines[j]);
-            double range=path.points[path.count-1].potential;
-            /* Match relative potential along each bank while preserving the
-             * traced streamline's inlet and outlet on the physical planes. */
-            double extent=(1-eta)*(lower[nx]-lower[0])+eta*(upper[nx]-upper[0]);
-            for (int i=0;i<=nx;++i) {
-                double here=i==0?0:i==nx?range:range*((1-eta)*(lower[i]-lower[0])+eta*(upper[i]-upper[0]))/extent;
-                if (!sample_potential(path,here,grid->nodes+offset+i*(tubes+1)+j)) goto done;
-            }
+            interior[used++]=(InteriorLine){g,j,mass/total};
+            uncached+=lines[g][j]==NULL;
         }
-        offset+=(size_t)rows*(tubes+1);
+        if (g<count) offset[g+1]=offset[g]+(size_t)rows*(tubes+1);
         weights+=tubes;
-        lines+=tubes;
     }
-    ok=1;
+    int bad=0;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic) reduction(|:bad) if(uncached>=4)
+#endif
+    for (int k=0;k<used;++k) {
+        if (bad) continue;
+        InteriorLine spec=interior[k];
+        int g=spec.passage,j=spec.tube;
+        double eta=spec.fraction;
+        const double *lower=phi+2*g*rows;
+        if (!lines[g][j])
+            lines[g][j]=alula_panel_guides_trace_level(guides,levels[g]+eta*(levels[g+1]-levels[g]),NULL);
+        if (!lines[g][j] || !place_line(alula_panel_streamline_path(lines[g][j]),eta,lower,lower+rows,
+            grid->nodes+offset[g]+j,nx,grid->tubes[g]+1)) bad=1;
+    }
+    ok=!bad;
 done:
+    free(interior);
     free(phi);
     return ok;
 }

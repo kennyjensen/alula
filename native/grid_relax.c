@@ -17,6 +17,7 @@ typedef struct {
 typedef struct {
     int count,corners[CONSTRAINTS];
     double radius;
+    AlulaPoint normal;
 } Vertex;
 
 typedef struct { AlulaPoint gradient; double bound; } HalfPlane;
@@ -53,16 +54,23 @@ static int feasible(const HalfPlane *h,int count,double slack,AlulaPoint *polygo
     return n;
 }
 
-static AlulaPoint closest(const AlulaPoint *polygon,int n)
+/* Penalize motion across the current streamline during the tangential retry.
+ * Polygon coordinates are already scaled by the local movement radius. */
+static double movement_metric(AlulaPoint a,AlulaPoint b,AlulaPoint normal)
+{
+    return dot(a,b)+dot(a,normal)*dot(b,normal);
+}
+
+static AlulaPoint closest(const AlulaPoint *polygon,int n,AlulaPoint normal)
 {
     AlulaPoint best=polygon[0];
-    double squared=dot(best,best);
+    double squared=movement_metric(best,best,normal);
     for (int i=0;i<n;++i) {
         AlulaPoint a=polygon[i],v=subtract(polygon[i+1==n?0:i+1],a);
-        double span=dot(v,v);
-        double t=span>0?fmin(1,fmax(0,-dot(a,v)/span)):0;
+        double span=movement_metric(v,v,normal);
+        double t=span>0?fmin(1,fmax(0,-movement_metric(a,v,normal)/span)):0;
         AlulaPoint p={a.x+t*v.x,a.y+t*v.y};
-        double d=dot(p,p);
+        double d=movement_metric(p,p,normal);
         if (d<squared) {squared=d;best=p;}
     }
     return best;
@@ -101,11 +109,11 @@ static AlulaPoint move_vertex(AlulaPoint *nodes,const Corner *corners,const Vert
     }
     int contains_origin=1;
     for (int i=0;i<v->count;++i) if (planes[i].bound>slack) {contains_origin=0;break;}
-    AlulaPoint local=contains_origin?(AlulaPoint){0}:closest(polygon,count);
+    AlulaPoint local=contains_origin?(AlulaPoint){0}:closest(polygon,count,v->normal);
     return (AlulaPoint){origin.x+v->radius*local.x,origin.y+v->radius*local.y};
 }
 
-int alula_repair_passage(AlulaPoint *nodes,int nx,int tubes)
+int alula_repair_passage(AlulaPoint *nodes,int nx,int tubes,double normal_weight)
 {
     int width=tubes+1,n=(nx+1)*width,number=4*nx*tubes;
     Corner *corners=malloc((size_t)number*sizeof *corners);
@@ -129,12 +137,19 @@ int alula_repair_passage(AlulaPoint *nodes,int nx,int tubes)
             ++next;
         }
     }
+    double normal_scale=sqrt(normal_weight);
     for (int i=1;i<nx;++i) for (int j=1;j<tubes;++j) {
         int k=i*width+j;
         double d=INFINITY;
         int near[]={k-width,k+width,k-1,k+1};
         for (int l=0;l<4;++l) d=fmin(d,length(subtract(initial[k],initial[near[l]])));
         vertices[k].radius=6*d;
+        if (normal_scale>0) {
+            AlulaPoint tangent=subtract(initial[k+width],initial[k-width]);
+            double span=length(tangent);
+            if (span>0 && isfinite(span))
+                vertices[k].normal=(AlulaPoint){(-tangent.y/span)*normal_scale,(tangent.x/span)*normal_scale};
+        }
     }
     for (int sweep=0;sweep<=240;++sweep) {
         memset(active,0,(size_t)n);

@@ -9,7 +9,7 @@
 
 typedef struct { int row,column; } Dependency;
 typedef struct { int slot,virtual_row; } Scatter;
-typedef struct { int physical,derivative; } Seed;
+typedef struct { double *target; int derivative; } Seed;
 
 struct AlulaBodyNewton {
     AlulaBody *body;
@@ -21,8 +21,10 @@ struct AlulaBodyNewton {
     int colors, *order, *scatter_start, *seed_start;
     Scatter *scatter;
     Seed *seed;
-    double *physical_values,*physical_direction,*derivatives,*edge_product,*work;
+    double *physical_values,*decoded_values,*physical_direction,*derivatives,*edge_product,*work;
     AlulaPoint *nodes,*node_direction;
+    uint64_t prepared_generation;
+    int has_prepared;
 };
 
 typedef struct {
@@ -235,8 +237,13 @@ static int build(AlulaBodyNewton *s,const AlulaBodyChart *map)
     for (int k=0;k<derivatives;++k) s->seed_start[colors[map->columns[k]]+1]++;
     for (int c=0;c<nc;++c) s->seed_start[c+1]+=s->seed_start[c];
     memcpy(next,s->seed_start,(size_t)nc*sizeof *next);
-    for (int i=0;i<s->physical.size;++i) for (int k=map->starts[i];k<map->starts[i+1];++k)
-        s->seed[next[colors[map->columns[k]]]++]=(Seed){i,k};
+    /* Seed each color directly into the node or scalar direction buffer. */
+    for (int i=0;i<s->physical.size;++i) {
+        double *target=i>=s->physical.density ? s->physical_direction+(i-s->physical.density) :
+            (i%2 ? &s->node_direction[i/2].y : &s->node_direction[i/2].x);
+        for (int k=map->starts[i];k<map->starts[i+1];++k)
+            s->seed[next[colors[map->columns[k]]]++]=(Seed){target,k};
+    }
     ok=1;
 done:
     free(b.start);free(b.edges);free(colors);free(slots);free(entries);free(next);
@@ -263,16 +270,18 @@ AlulaBodyNewton *alula_body_newton_create(AlulaBody *body,const AlulaBodyChart *
     if (nd==0) return NULL;
     AlulaBodyNewton *s=calloc(1,sizeof *s);
     if (!s) return NULL;
-    s->body=body; s->physical=p; s->decode=chart->decode; s->context=chart->context; s->rebase=chart->rebase;
+    s->body=body; s->physical=p; s->decode=chart->decode; s->context=chart->context;
+    s->rebase=chart->rebase_decoded?chart->rebase_decoded:chart->rebase;
     s->order=malloc((size_t)n*sizeof *s->order);
     s->physical_values=malloc((size_t)p.size*sizeof *s->physical_values);
-    s->physical_direction=calloc((size_t)p.size,sizeof *s->physical_direction);
+    s->decoded_values=malloc((size_t)p.size*sizeof *s->decoded_values);
+    s->physical_direction=calloc((size_t)(p.size-p.density),sizeof *s->physical_direction);
     s->derivatives=malloc((size_t)nd*sizeof *s->derivatives);
     s->nodes=malloc((size_t)body->size.nodes*sizeof *s->nodes);
-    s->node_direction=malloc((size_t)body->size.nodes*sizeof *s->node_direction);
+    s->node_direction=calloc((size_t)body->size.nodes,sizeof *s->node_direction);
     s->work=malloc(((size_t)6*n+12*(size_t)body->in.nx)*sizeof *s->work);
     unsigned char *seen=calloc((size_t)n,sizeof *seen);
-    int ok=s->order && s->physical_values && s->physical_direction && s->derivatives &&
+    int ok=s->order && s->physical_values && s->decoded_values && s->physical_direction && s->derivatives &&
         s->nodes && s->node_direction && s->work && seen;
     if (ok) for (int i=0;i<n;++i) {
         int row=chart->equation_order ? chart->equation_order[i] : i;
@@ -294,30 +303,88 @@ void alula_body_newton_free(AlulaBodyNewton *s)
     alula_sparse_free(s->matrix);
     free(s->order); free(s->scatter_start); free(s->seed_start);
     free(s->scatter); free(s->seed); free(s->physical_values); free(s->physical_direction);
+    free(s->decoded_values);
     free(s->derivatives); free(s->work); free(s->nodes); free(s->node_direction); free(s);
 }
 
-static AlulaBodyState view(const AlulaBodyNewton *s,const double *a,AlulaPoint *nodes)
+static AlulaBodyState state_view(const AlulaBodyNewton *s,const double *density,const AlulaPoint *nodes)
 {
     AlulaBodyPhysicalLayout p=s->physical;
-    for (int i=0;i<s->body->size.nodes;++i) nodes[i]=(AlulaPoint){a[2*i],a[2*i+1]};
-    return (AlulaBodyState){.nodes=nodes,.density=a+p.density,.mass=a+p.mass,
-        .circulation=a[p.strength],.source=a[p.strength+1],
-        .doublet_x=a[p.strength+2],.doublet_y=a[p.strength+3],.wake_width=a+p.wake};
+    const double *strength=density+(p.strength-p.density);
+    return (AlulaBodyState){.nodes=nodes,.density=density,.mass=density+(p.mass-p.density),
+        .circulation=strength[0],.source=strength[1],.doublet_x=strength[2],.doublet_y=strength[3],
+        .wake_width=density+(p.wake-p.density)};
 }
 
-static int evaluate(AlulaBodyNewton *s,const double *x,double *r,AlulaBodyDiagnostics *diag,int deriv)
+static AlulaBodyState current_state(AlulaBodyNewton *s)
+{
+    const double *a=s->physical_values;
+    for (int i=0;i<s->body->size.nodes;++i) s->nodes[i]=(AlulaPoint){a[2*i],a[2*i+1]};
+    return state_view(s,a+s->physical.density,s->nodes);
+}
+
+static int finite_packed(const AlulaBodyNewton *s,const double *x)
 {
     for (int i=0;i<s->body->size.rows;++i) if (!isfinite(x[i])) return 0;
-    if (!s->decode(s->context,x,s->physical_values,deriv?s->derivatives:NULL)) return 0;
-    AlulaBodyState state=view(s,s->physical_values,s->nodes);
-    return alula_body_residual(s->body,&state,r,diag)==ALULA_BODY_OK;
+    return 1;
 }
 
-static int assemble(AlulaBodyNewton *s,const double *x,double *r)
+static int prepared(const AlulaBodyNewton *s,const double *physical)
 {
-    if (!evaluate(s,x,r,NULL,1)) return 0;
-    AlulaBodyState state=view(s,s->physical_values,s->nodes);
+    return s->has_prepared && s->prepared_generation==s->body->residual_generation &&
+        memcmp(physical,s->physical_values,(size_t)s->physical.size*sizeof *physical)==0;
+}
+
+static AlulaBodyStatus prepare_current(AlulaBodyNewton *s,const AlulaBodyState *state,
+    double *residual,AlulaBodyDiagnostics *diagnostics)
+{
+    AlulaBodyStatus status=alula_body_residual(s->body,state,residual,diagnostics);
+    s->has_prepared=status==ALULA_BODY_OK;
+    s->prepared_generation=s->body->residual_generation;
+    return status;
+}
+
+int alula_body_newton_prepare(AlulaBodyNewton *s,const double *physical)
+{
+    if (!s || !physical) return 0;
+    if (prepared(s,physical)) return 1;
+    memcpy(s->physical_values,physical,(size_t)s->physical.size*sizeof *physical);
+    AlulaBodyState state=current_state(s);
+    return prepare_current(s,&state,s->work,NULL)==ALULA_BODY_OK;
+}
+
+static int evaluate(AlulaBodyNewton *s,const double *x,double *r,AlulaBodyDiagnostics *diag,
+    AlulaBodySolveResult *trial_report)
+{
+    s->has_prepared=0;
+    if (!finite_packed(s,x) || !s->decode(s->context,x,s->physical_values,NULL)) {
+        if (trial_report) ++trial_report->rejected_chart;
+        return 0;
+    }
+    AlulaBodyState state=current_state(s);
+    AlulaBodyStatus status=prepare_current(s,&state,r,diag);
+    if (status!=ALULA_BODY_OK) {
+        if (trial_report) {
+            ++trial_report->rejected_flow;
+            trial_report->last_rejected_flow=status;
+        }
+        return 0;
+    }
+    return 1;
+}
+
+static int assemble(AlulaBodyNewton *s,const double *x,double *r,int allow_reuse)
+{
+    if (!finite_packed(s,x) || !s->decode(s->context,x,s->decoded_values,s->derivatives)) return 0;
+    /* The chart derivatives must be refreshed after recentering. Reuse the
+     * trial residual and its stencil only if decoding gives the exact same
+     * physical values and no callback has replaced the stencil. */
+    int reuse=allow_reuse && prepared(s,s->decoded_values);
+    double *previous=s->physical_values;
+    s->physical_values=s->decoded_values;
+    s->decoded_values=previous;
+    AlulaBodyState state=current_state(s);
+    if (!reuse && prepare_current(s,&state,r,NULL)!=ALULA_BODY_OK) return 0;
     int n=s->body->size.rows;
     double *a=alula_sparse_values(s->matrix), *jv=s->work+5*(size_t)n;
     memset(a,0,(size_t)alula_sparse_nonzeros(s->matrix)*sizeof *a);
@@ -326,11 +393,11 @@ static int assemble(AlulaBodyNewton *s,const double *x,double *r)
         if (start==end) continue;
         for (int k=start;k<end;++k) {
             Seed q=s->seed[k];
-            s->physical_direction[q.physical]+=s->derivatives[q.derivative];
+            *q.target+=s->derivatives[q.derivative];
         }
-        AlulaBodyState d=view(s,s->physical_direction,s->node_direction);
-        AlulaBodyStatus status=alula_body_apply_prepared(s->body,&state,&d,jv,s->edge_product);
-        for (int k=start;k<end;++k) s->physical_direction[s->seed[k].physical]=0;
+        AlulaBodyState d=state_view(s,s->physical_direction,s->node_direction);
+        AlulaBodyStatus status=alula_body_apply_prepared(s->body,&state,&d,0,s->body->in.nx,jv,s->edge_product);
+        for (int k=start;k<end;++k) *s->seed[k].target=0;
         if (status!=ALULA_BODY_OK) return 0;
         for (int k=s->scatter_start[color];k<s->scatter_start[color+1];++k) {
             Scatter q=s->scatter[k];
@@ -340,12 +407,90 @@ static int assemble(AlulaBodyNewton *s,const double *x,double *r)
     return 1;
 }
 
+int alula_body_newton_linearize(AlulaBodyNewton *s,const double *packed)
+{
+    return s && packed && assemble(s,packed,s->work,0);
+}
+
+int alula_body_newton_correction(AlulaBodyNewton *s,const double *packed,double *correction)
+{
+    if (!correction || !alula_body_newton_linearize(s,packed)) return 0;
+    int n=s->body->size.rows;
+    double *rhs=s->work+n;
+    for (int i=0;i<n;++i) rhs[s->order[i]]=-s->work[i];
+    return alula_sparse_solve(s->matrix,rhs,correction);
+}
+
+int alula_body_newton_displacement_rhs(AlulaBodyNewton *s,const double *packed,double *rhs)
+{
+    if (!s || !packed || !rhs || !s->has_prepared ||
+        s->prepared_generation!=s->body->residual_generation) return 0;
+    int n=s->body->size.rows;
+    /* Differentiate the Euler equations at the accepted state. Only the
+     * chart displacement changes in the forcing term. This keeps the gas,
+     * flux and upwind stencils shared across the entire reduced Jacobian. */
+    double *delta=s->decoded_values;
+    if (!s->decode(s->context,packed,delta,NULL)) return 0;
+    const AlulaBody *body=s->body;
+    int nx=body->in.nx,first=nx,end=0;
+    for (int g=0;g<=body->in.bodies;++g) {
+        int width=body->tubes[g]+1;
+        for (int i=0;i<=nx;++i) {
+            int start=body->node[g]+i*width;
+            if (!memcmp(delta+2*start,s->physical_values+2*start,2*(size_t)width*sizeof *delta)) continue;
+            /* Moving a crossline changes both adjacent sections. */
+            if (i-1<first) first=i>0 ? i-1 : 0;
+            if (i+1>end) end=i<nx ? i+1 : nx;
+            for (int k=start;k<start+width;++k)
+                s->node_direction[k]=(AlulaPoint){delta[2*k]-s->physical_values[2*k],
+                    delta[2*k+1]-s->physical_values[2*k+1]};
+        }
+    }
+    if (end<first) end=first;
+    for (int i=s->physical.density;i<s->physical.size;++i) delta[i]-=s->physical_values[i];
+    for (int i=s->physical.density;i<s->physical.strength;++i) if (delta[i]!=0) {
+        first=0; end=nx;
+        break;
+    }
+    AlulaBodyState base=state_view(s,s->physical_values+s->physical.density,s->nodes);
+    AlulaBodyState direction=state_view(s,delta+s->physical.density,s->node_direction);
+    double *force=s->work;
+    AlulaBodyStatus status=alula_body_apply_prepared(s->body,&base,&direction,first,end,force,NULL);
+    /* The colored assembly expects an initially zero seed direction. */
+    memset(s->node_direction,0,(size_t)s->body->size.nodes*sizeof *s->node_direction);
+    if (status!=ALULA_BODY_OK) return 0;
+    for (int i=0;i<n;++i) rhs[s->order[i]]=-force[i];
+    return 1;
+}
+
+int alula_body_newton_predict_batch(AlulaBodyNewton *s,const double *packed,int count,
+    const double *rhs,double *predictions)
+{
+    if (!s || !packed || !s->has_prepared || s->prepared_generation!=s->body->residual_generation ||
+        !alula_sparse_solve_batch(s->matrix,count,rhs,predictions)) return 0;
+    size_t n=(size_t)s->body->size.rows;
+    for (int j=0;j<count;++j)
+        for (size_t i=0;i<n;++i) predictions[j*n+i]+=packed[i];
+    return 1;
+}
+
+int alula_body_newton_response(AlulaBodyNewton *s,const double *packed,double *prediction)
+{
+    if (!s || !packed || !prediction) return 0;
+    size_t n=(size_t)s->body->size.rows;
+    double *rhs=s->work+n,*result=rhs+n;
+    if (!alula_body_newton_displacement_rhs(s,packed,rhs) ||
+        !alula_body_newton_predict_batch(s,packed,1,rhs,result)) return 0;
+    memcpy(prediction,result,n*sizeof *prediction);
+    return 1;
+}
+
 int alula_body_newton_product(AlulaBodyNewton *s,const double *x,const double *d,double *product)
 {
     if (!s || !x || !d || !product) return 0;
     int n=s->body->size.rows;
     for (int i=0;i<n;++i) if (!isfinite(d[i])) return 0;
-    if (!assemble(s,x,s->work)) return 0;
+    if (!assemble(s,x,s->work,0)) return 0;
     double *temp=s->work+n;
     alula_sparse_product(s->matrix,d,temp);
     for (int i=0;i<n;++i) if (!isfinite(temp[i])) return 0;
@@ -358,6 +503,13 @@ static double max_abs(const double *x,int n)
     double m=0;
     for (int i=0;i<n;++i) m=fmax(m,fabs(x[i]));
     return m;
+}
+
+static void record_diagnostics(AlulaBodySolveResult *result,const AlulaBodyDiagnostics *diag,double norm)
+{
+    result->norm=norm;
+    result->max_mach=diag->max_mach;
+    memcpy(result->residual_by_family,diag->residual,sizeof result->residual_by_family);
 }
 
 static int final_convex(const AlulaBodyNewton *s)
@@ -374,39 +526,45 @@ static int final_convex(const AlulaBodyNewton *s)
     return 1;
 }
 
-AlulaBodySolveResult alula_body_newton_solve(AlulaBodyNewton *s,double *x,int iterations,double tolerance)
+AlulaBodySolveResult alula_body_newton_solve_observed(AlulaBodyNewton *s,double *x,int iterations,
+    double tolerance,AlulaEulerProgress progress,void *context)
 {
     AlulaBodySolveResult result={.status=ALULA_BODY_BAD_STATE,.norm=INFINITY,.max_mach=NAN};
     if (!s || !x || iterations<0 || !positive(tolerance)) return result;
     int n=s->body->size.rows;
     double *r=s->work,*rhs=r+n,*delta=rhs+n,*trial=delta+n,*rt=trial+n;
     AlulaBodyDiagnostics diag;
-    if (!evaluate(s,x,r,&diag,0)) return result;
-    result.norm=max_abs(r,n);
-    result.max_mach=diag.max_mach;
+    if (!evaluate(s,x,r,&diag,NULL)) return result;
+    record_diagnostics(&result,&diag,max_abs(diag.residual,ALULA_BODY_FAMILIES));
+    if (progress) progress(context,0,result.norm);
     result.status=ALULA_BODY_ITERATION_LIMIT;
     result.colors=s->colors;
     for (int it=0;it<iterations && result.norm>tolerance;++it) {
-        if (!assemble(s,x,r)) {result.status=ALULA_BODY_LINEAR_FAILURE;break;}
+        if (!assemble(s,x,r,1)) {result.status=ALULA_BODY_LINEAR_FAILURE;break;}
         for (int i=0;i<n;++i) rhs[s->order[i]]=-r[i];
         if (!alula_sparse_solve(s->matrix,rhs,delta)) {result.status=ALULA_BODY_LINEAR_FAILURE;break;}
         int accepted=0;
         for (double step=1;step>=0x1p-20;step*=.5) {
             for (int i=0;i<n;++i) trial[i]=x[i]+step*delta[i];
-            if (evaluate(s,trial,rt,&diag,0)) {
-                double norm=max_abs(rt,n);
+            if (evaluate(s,trial,rt,&diag,&result)) {
+                double norm=max_abs(diag.residual,ALULA_BODY_FAMILIES);
                 if (norm<=(1-1e-4*step)*result.norm) {
                     if (s->rebase && !s->rebase(s->context,trial)) {
+                        ++result.rejected_chart;
                         result.backtracks++;
                         continue;
                     }
                     memcpy(x,trial,(size_t)n*sizeof *x);
-                    result.norm=norm;
-                    result.max_mach=diag.max_mach;
+                    double *previous=r;
+                    r=rt;
+                    rt=previous;
+                    record_diagnostics(&result,&diag,norm);
                     result.iterations++;
+                    if (progress) progress(context,result.iterations,norm);
                     accepted=1;
                     break;
                 }
+                ++result.rejected_residual;
             }
             result.backtracks++;
         }
@@ -416,4 +574,9 @@ AlulaBodySolveResult alula_body_newton_solve(AlulaBodyNewton *s,double *x,int it
         result.status=final_convex(s) ? ALULA_BODY_SOLVED : ALULA_BODY_INVALID_FINAL_GRID;
     result.linear=alula_sparse_stats(s->matrix);
     return result;
+}
+
+AlulaBodySolveResult alula_body_newton_solve(AlulaBodyNewton *s,double *x,int iterations,double tolerance)
+{
+    return alula_body_newton_solve_observed(s,x,iterations,tolerance,NULL,NULL);
 }

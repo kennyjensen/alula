@@ -2,6 +2,7 @@
 #include "body_internal.h"
 
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -9,6 +10,8 @@ static int active(const AlulaBody *b,int g,int i)
 {
     return i>=b->cuts[g].leading && i<=b->cuts[g].trailing;
 }
+
+enum { BLEND_ENTROPY, BLEND_MOMENTUM, BLEND_MIXED };
 
 static int end_position(const AlulaBody *b,int g,int i,int j)
 {
@@ -48,6 +51,26 @@ static void build_rows(AlulaBody *b)
     b->size.rows=(int)(r-b->rows);
 }
 
+int alula_body_set_mach(AlulaBody *b,double mach)
+{
+    if (!b || !(mach>0 && mach<1)) return 0;
+    double m2=mach*mach,beta=sqrt(1-m2),beta3=beta*beta*beta;
+    double gamma=b->in.gamma,gm=gamma-1;
+    double p_inf=1/(gamma*m2),h0=1/(gm*m2)+.5,rho_total=pow(1+.5*gm*m2,1/gm);
+    if (!positive(p_inf) || !positive(h0) || !positive(rho_total)) return 0;
+    b->in.mach=mach;
+    b->mach_sq=m2;
+    b->beta=beta;
+    b->pg_a=.25*((3-gamma)/beta+(gamma+1)/beta3);
+    b->pg_b=(gamma+1)/16*(1/beta-1/beta3);
+    b->pg_scale=m2/(TWO_PI*TWO_PI);
+    b->p_inf=p_inf;
+    b->h0=h0;
+    b->rho_total=rho_total;
+    ++b->residual_generation;
+    return 1;
+}
+
 AlulaBody *alula_body_create(const AlulaBodyInput *in)
 {
     if (!in || in->nx<4 || in->nx>50000 || in->bodies<1 || in->bodies>MAX_BODIES ||
@@ -67,6 +90,7 @@ AlulaBody *alula_body_create(const AlulaBodyInput *in)
     if (nt>100000/in->nx) return NULL;
     AlulaBody *b=calloc(1,sizeof *b);
     if (!b) return NULL;
+    b->failed_initial_cell=-1;
     b->in=*in;
     b->in.tubes=b->tubes; b->in.cuts=b->cuts;
     int nx=in->nx;
@@ -86,17 +110,7 @@ AlulaBody *alula_body_create(const AlulaBodyInput *in)
     b->size=(AlulaBodySize){.nodes=b->node[in->bodies+1],.density=nx*nt,.tubes=nt,.wake_widths=b->wake[in->bodies]};
     double angle=in->alpha*TWO_PI/360;
     b->freestream=(AlulaPoint){cos(angle),sin(angle)};
-    b->mach_sq=in->mach*in->mach;
-    b->beta=sqrt(1-b->mach_sq);
-    double beta3=b->beta*b->beta*b->beta;
-    b->pg_a=.25*((3-in->gamma)/b->beta+(in->gamma+1)/beta3);
-    b->pg_b=(in->gamma+1)/16*(1/b->beta-1/beta3);
-    b->pg_scale=b->mach_sq/(TWO_PI*TWO_PI);
-    double gm=in->gamma-1;
-    b->p_inf=1/(in->gamma*b->mach_sq);
-    b->h0=1/(gm*b->mach_sq)+.5;
-    b->rho_total=pow(1+.5*gm*b->mach_sq,1/gm);
-    if (!finite_point(b->freestream) || !positive(b->p_inf) || !positive(b->h0) || !positive(b->rho_total)) goto fail;
+    if (!finite_point(b->freestream) || !alula_body_set_mach(b,in->mach)) goto fail;
     /* Each geometric position has at most one pressure/tangency/gap row.
      * Extra rows are the two edge conditions per body and three farfield modes. */
     size_t maxrows=(size_t)b->size.density+b->size.nodes+2*in->bodies+3;
@@ -104,6 +118,14 @@ AlulaBody *alula_body_create(const AlulaBodyInput *in)
     b->cells=malloc((size_t)(nx-1)*nt*sizeof *b->cells);
     b->sections=malloc((size_t)nx*nt*sizeof *b->sections);
     if (!b->rows || !b->cells || !b->sections) goto fail;
+    if (in->mode==ALULA_BODY_HYBRID && in->ismom==4) {
+        b->blend_regime=malloc((size_t)(nx-1)*nt*sizeof *b->blend_regime);
+        if (!b->blend_regime) goto fail;
+    }
+    if (in->upwind && nx>2) {
+        b->upwind_stencils=malloc((size_t)(nx-2)*nt*sizeof *b->upwind_stencils);
+        if (!b->upwind_stencils) goto fail;
+    }
     build_rows(b);
     return b;
 fail:
@@ -117,6 +139,9 @@ void alula_body_free(AlulaBody *b)
 {
     if (!b) return;
     free(b->rows); free(b->cells); free(b->sections);
+    free(b->upwind_stencils);
+    free(b->blend_regime);
+    free(b->jacobian_fields);
     free(b->section_tangents); free(b->cell_tangents); free(b);
 }
 
@@ -146,34 +171,98 @@ int alula_body_farfield(const AlulaBody *b,const double *coeff,AlulaPoint p,Farf
     if (!positive(temp) || !(b->mach_sq*q2/temp<1)) return 0;
     out->velocity=velocity;
     out->pressure=b->p_inf*pow(temp,b->in.gamma/gm);
+    out->log_radius=logr;
     return positive(out->pressure);
+}
+
+static inline AlulaCellStatus initialize_cell(const AlulaBody *b,const AlulaBodyState *s,
+    int i,int g,int j,AlulaCell *cell,const AlulaCell *previous)
+{
+    int k=index_section(b,g,i,j);
+    AlulaCellInput p={.density={s->density[k],s->density[k+b->size.tubes]},
+        .mass=s->mass[b->column[g]+j],.h0=b->h0,.gamma=b->in.gamma,
+        .correction=b->in.correction,.positive_simple=b->in.positive_simple};
+    for (int q=0;q<3;++q) {
+        p.lower[q]=point(b,s,g,i+q,j);
+        p.upper[q]=point(b,s,g,i+q,j+1);
+    }
+    return alula_cell_initialize(cell,&p,previous);
+}
+
+/* Probe only the wall-adjacent gas and geometry used for BL edge matching.
+ * Keep the accepted Euler stencil intact while sampling a linear response. */
+double alula_body_edge_speed(const AlulaBody *b,const AlulaBodyState *state,int g,int i,int j,
+    AlulaEdgeCursor *cursor)
+{
+    int station=i<b->in.nx?i:b->in.nx-1;
+    const AlulaCell *c=cell(b,g,station,j);
+    if (state) {
+        AlulaCell *current=&cursor->cells[station%2];
+        if (cursor->station!=station) {
+            const AlulaCell *previous=station>1 && cursor->station==station-1?&cursor->cells[(station-1)%2]:NULL;
+            if (initialize_cell(b,state,station-1,g,j,current,previous)!=ALULA_CELL_OK) {
+                cursor->station=0;
+                return NAN;
+            }
+            cursor->station=station;
+        }
+        c=current;
+    }
+    const AlulaCellValue *v=&c->value;
+    double q=.5*(v->state[0].speed+v->state[1].speed);
+    double mach=.5*(v->state[0].mach_sq+v->state[1].mach_sq);
+    return mach<1?q+.2*q*mach*(mach-1)*v->geometry.curvature:q;
 }
 
 static AlulaBodyStatus prepare(AlulaBody *b,const AlulaBodyState *s,double *max_mach)
 {
     int nx=b->in.nx, nt=b->size.tubes, bodies=b->in.bodies, bad=0;
+    /* Nearby line-search trials often fail on the same stencil. Retest
+     * it first with the ordinary initializer and skip the full sweep
+     * only when the new state also fails that exact check. */
+    if (b->failed_initial_cell>=0) {
+        int i=b->failed_initial_cell/nt, tube=b->failed_initial_cell%nt, g=0;
+        while (tube>=b->column[g+1]) ++g;
+        AlulaCell scratch;
+        if (initialize_cell(b,s,i,g,tube-b->column[g],&scratch,NULL)!=ALULA_CELL_OK)
+            return ALULA_BODY_CELL;
+        b->failed_initial_cell=-1;
+    }
+    /* Consecutive stencils share a quadrilateral in each tube. Keep a
+     * group of stations on one thread so only its first station has to
+     * check both quadrilaterals. The six-point middle is always checked. */
+    const int block=8;
+    int failed_cell=INT_MAX;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) reduction(|:bad) if(nx*nt>1024)
+#pragma omp parallel for schedule(static) reduction(min:failed_cell) if(nx*nt>1024)
 #endif
-    for (int i=1;i<nx;++i) for (int g=0;g<=bodies;++g) for (int j=0;j<b->tubes[g];++j) {
-        if (bad) break;
-        int k=index_section(b,g,i-1,j);
-        AlulaCellInput p={.density={s->density[k],s->density[k+nt]},.mass=s->mass[b->column[g]+j],
-            .h0=b->h0,.gamma=b->in.gamma,.correction=b->in.correction,.positive_simple=b->in.positive_simple};
-        for (int q=0;q<3;++q) {
-            p.lower[q]=point(b,s,g,i-1+q,j);
-            p.upper[q]=point(b,s,g,i-1+q,j+1);
-        }
-        AlulaCell *c=b->cells+k;
-        if (alula_cell_initialize(c,&p)!=ALULA_CELL_OK) { bad=1; continue; }
-        for (int q=i==1?0:1;q<2;++q) {
-            AlulaSection gas=c->value.state[q];
-            b->sections[k+q*nt]=(Section){gas,c->value.geometry.length[q],gas.speed};
+    for (int first=1;first<nx;first+=block) {
+        int end=first+block<nx? first+block : nx;
+        for (int i=first;i<end && failed_cell==INT_MAX;++i) {
+            for (int g=0;g<=bodies && failed_cell==INT_MAX;++g) {
+                for (int j=0;j<b->tubes[g];++j) {
+                    int k=index_section(b,g,i-1,j);
+                    AlulaCell *c=b->cells+k;
+                    const AlulaCell *previous=i>first?c-nt:NULL;
+                    if (initialize_cell(b,s,i-1,g,j,c,previous)!=ALULA_CELL_OK) {
+                        failed_cell=k;
+                        break;
+                    }
+                    for (int q=i==1?0:1;q<2;++q) {
+                        AlulaSection gas=c->value.state[q];
+                        b->sections[k+q*nt]=(Section){gas,c->value.geometry.length[q],gas.speed};
+                    }
+                }
+            }
         }
     }
-    if (bad) return ALULA_BODY_CELL;
+    if (failed_cell!=INT_MAX) {
+        b->failed_initial_cell=failed_cell;
+        return ALULA_BODY_CELL;
+    }
 
     double max_sq=0;
+    b->check_all_upwind_tangents=0;
     for (int k=0;k<nx;++k) for (int j=0;j<nt;++j) {
         Section *q=b->sections+k*nt+j;
         double m=q->gas.mach_sq;
@@ -186,7 +275,9 @@ static AlulaBodyStatus prepare(AlulaBody *b,const AlulaBodyState *s,double *max_
             .mach_sq={z->gas.mach_sq,m},.spacing={.5*(a->length+z->length),.5*(z->length+q->length)},
             .mucon=b->in.mucon,.mcrit=b->in.mcrit,.gamma=b->in.gamma};
         AlulaUpwindValue value;
-        if (alula_streamtube_upwind(&in,&value,NULL,NULL)!=ALULA_CELL_OK) return ALULA_BODY_CELL;
+        AlulaUpwindStencil *stencil=b->upwind_stencils+(k-2)*nt+j;
+        if (alula_upwind_prepare(&in,&value,stencil)!=ALULA_CELL_OK) return ALULA_BODY_CELL;
+        if (stencil->kink || !isfinite(stencil->slope)) b->check_all_upwind_tangents=1;
         q->transport=value.speed;
     }
 #ifdef _OPENMP
@@ -225,8 +316,17 @@ int alula_body_streamwise(const AlulaBody *b,Row r,const AlulaCellValue *d,doubl
             break;
         }
         case 4: {
+            int k=index_section(b,r.g,r.i-1,r.j);
+            /* The primal blend has already selected a pure equation at
+             * either endpoint. Only mixed cells need the blend derivative. */
+            if (d && b->blend_regime[k]!=BLEND_MIXED) {
+                *value=(b->blend_regime[k]==BLEND_ENTROPY?d->isentropic:d->momentum)/b->p_inf;
+                return 1;
+            }
             AlulaBlendValue blend, db;
             if (alula_streamtube_blend(v,b->in.epsilon,&blend,d,0,&db)!=ALULA_CELL_OK) return 0;
+            if (!d) b->blend_regime[k]=blend.fraction==0?BLEND_ENTROPY:
+                blend.fraction==1?BLEND_MOMENTUM:BLEND_MIXED;
             *value=(d ? db.residual : blend.residual)/b->p_inf;
             return 1;
         }
@@ -304,6 +404,7 @@ AlulaBodyStatus alula_body_residual(AlulaBody *b,const AlulaBodyState *s,
         !isfinite(s->source) || !isfinite(s->doublet_x) || !isfinite(s->doublet_y))
         return ALULA_BODY_INVALID;
     AlulaBodyDiagnostics local={0};
+    ++b->residual_generation;
     AlulaBodyStatus status=prepare(b,s,&local.max_mach);
     if (status!=ALULA_BODY_OK) return status;
 

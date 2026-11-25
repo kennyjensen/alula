@@ -8,3 +8,6 @@
 /check-body
 /check-bl
 /check-panel-field
+/__pycache__/
+/check-displacement
+/alula-viscous

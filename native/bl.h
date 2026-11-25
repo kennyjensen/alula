@@ -9,7 +9,7 @@ typedef enum {
 } AlulaBLRegime;
 typedef enum {
     ALULA_BL_OK, ALULA_BL_INVALID, ALULA_BL_DOMAIN, ALULA_BL_NO_TRANSITION,
-    ALULA_BL_TRANSITION_ROOT, ALULA_BL_LINEAR, ALULA_BL_ITERATION_LIMIT
+    ALULA_BL_TRANSITION_ROOT, ALULA_BL_LINEAR, ALULA_BL_ITERATION_LIMIT, ALULA_BL_LINE_SEARCH
 } AlulaBLStatus;
 
 typedef struct {
@@ -38,6 +38,8 @@ typedef struct {
     AlulaBLTransition transition;
 } AlulaBLBlock;
 
+/* XFOIL dead-air thickness downstream of a finite trailing edge. */
+double alula_bl_dead_air(double width,double tangent_cross,double distance);
 /* Initialized contexts are immutable and may be shared across threads. */
 int alula_bl_context(AlulaBLContext *ctx,double reynolds,double mach,double gamma,double ncrit);
 AlulaBLStatus alula_bl_station(const AlulaBLContext *ctx,const AlulaBLStation *station,
@@ -60,6 +62,8 @@ typedef struct {
     int iterations,backtracks;
     double maximum_residual,edge_residual;
     AlulaBLTransition transition;
+    size_t edge_mismatch_index; /* Defined when edge_residual is positive. */
+    double euler_edge_speed;
 } AlulaBLMarchResult;
 
 /* Direct profile initialization at fixed edge velocities. The result owns
@@ -70,13 +74,13 @@ AlulaBLMarchResult alula_bl_march_surface(const AlulaBLContext *ctx,
     AlulaBLStation *profile,AlulaBLRegime *regimes);
 /* Pass count nonnegative displacements in reference chords, or NULL for a
  * fixed-edge march. Positive entries use a local interaction law. Zero
- * uses the direct march with an inverse turbulent fallback. The caller
+ * uses the direct march with an inverse fallback for separation. The caller
  * must check the edge mismatch separately. */
 AlulaBLMarchResult alula_bl_march_surface_interaction(const AlulaBLContext *ctx,
     const AlulaBLEdge *edges,size_t count,double trip_s,double similarity_exponent,
     const double *displacement,AlulaBLStation *profile,AlulaBLRegime *regimes);
 /* Local mode keeps Euler edge speeds upstream of the first failed
- * turbulent interval, then enables the interaction law downstream. */
+ * interval that needs interaction, then enables the law downstream. */
 AlulaBLMarchResult alula_bl_march_surface_controlled(const AlulaBLContext *ctx,
     const AlulaBLEdge *edges,size_t count,double trip_s,double similarity_exponent,
     const double *displacement,int local,AlulaBLStation *profile,AlulaBLRegime *regimes);
